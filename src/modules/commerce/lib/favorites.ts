@@ -1,7 +1,7 @@
 // お気に入り状態管理。cart.tsと同じパターン(localStorage + 素朴なTS関数 +
 // CustomEvent + storageイベントでのクロスタブ同期)を踏襲する。
 //
-// commerceモジュールからmemberモジュールを参照する片方向依存(の例外)。
+// commerceモジュールからmemberモジュールを参照する、片方向依存の例外的な扱い。
 // お気に入りは会員でなければ使えない機能のため、追加/削除は`getCurrentMemberId()`で
 // ログイン中の会員IDを解決し、未ログインなら操作を拒否する。
 
