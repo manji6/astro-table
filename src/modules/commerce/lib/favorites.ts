@@ -6,6 +6,7 @@
 // ログイン中の会員IDを解決し、未ログインなら操作を拒否する。
 
 import { getCurrentMemberId } from '../../member/lib/member';
+import siteConfig from '../../../../site.config';
 
 export type FavoritesChangeAction = 'add' | 'remove' | 'sync';
 
@@ -22,7 +23,7 @@ declare global {
   }
 }
 
-const STORAGE_PREFIX = 'astro-table:favorites:';
+const STORAGE_PREFIX = `${siteConfig.storagePrefix}:favorites:`;
 
 function favoritesKey(memberId: string): string {
   return `${STORAGE_PREFIX}${memberId}`;

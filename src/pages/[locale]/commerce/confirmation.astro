@@ -87,6 +87,7 @@ const text =
 <script>
   import { clearCart, getCart } from '../../../modules/commerce/lib/cart';
   import { toProductLocale } from '../../../modules/commerce/lib/locale';
+  import siteConfig from '../../../../site.config';
 
   interface CheckoutDraft {
     name: string;
@@ -99,7 +100,7 @@ const text =
     const routeLocale = root.dataset.locale as string;
     const cartLocale = toProductLocale(routeLocale);
     const cart = getCart(cartLocale);
-    const rawDraft = localStorage.getItem(`astro-table:checkoutDraft:${cartLocale}`);
+    const rawDraft = localStorage.getItem(`${siteConfig.storagePrefix}:checkoutDraft:${cartLocale}`);
     const foundEl = root.querySelector<HTMLElement>('.confirmation-page__found');
     const notFoundEl = root.querySelector<HTMLElement>('.confirmation-page__not-found');
     const labels = (window as unknown as { __confirmationPageLabels: { creditCardLabel: string; codLabel: string } })
@@ -148,8 +149,8 @@ const text =
             quantity: item.quantity,
           })),
         };
-        localStorage.setItem(`astro-table:lastOrder:${cartLocale}`, JSON.stringify(lastOrder));
-        localStorage.removeItem(`astro-table:checkoutDraft:${cartLocale}`);
+        localStorage.setItem(`${siteConfig.storagePrefix}:lastOrder:${cartLocale}`, JSON.stringify(lastOrder));
+        localStorage.removeItem(`${siteConfig.storagePrefix}:checkoutDraft:${cartLocale}`);
         clearCart(cartLocale);
         window.location.href = `/${routeLocale}/commerce/order`;
       });

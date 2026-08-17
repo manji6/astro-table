@@ -12,6 +12,9 @@ export interface SiteConfig {
   member: {
     enabled: boolean;
   };
+  // カート・会員・お気に入り等、localStorageキーの先頭に付けるサイト固有のプレフィックス。
+  // サイトごとに固有の名前を設定する(このテンプレートを使う側のサイト名等)。
+  storagePrefix: string;
 }
 
 const siteConfig: SiteConfig = {
@@ -24,6 +27,7 @@ const siteConfig: SiteConfig = {
     // 新規サイトへテンプレートとして展開する際は、必要に応じてfalseに戻す。
     enabled: true,
   },
+  storagePrefix: 'astro-table',
 };
 
 export default siteConfig;

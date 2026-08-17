@@ -70,6 +70,7 @@ const text =
 <script>
   import { getCart } from '../../../../../modules/commerce/lib/cart';
   import { toProductLocale } from '../../../../../modules/commerce/lib/locale';
+  import siteConfig from '../../../../../../site.config';
 
   const root = document.querySelector<HTMLElement>('.checkout-page');
   if (root) {
@@ -104,7 +105,7 @@ const text =
           address: String(formData.get('address') ?? ''),
           payment: String(formData.get('payment') ?? ''),
         };
-        localStorage.setItem(`astro-table:checkoutDraft:${cartLocale}`, JSON.stringify(draft));
+        localStorage.setItem(`${siteConfig.storagePrefix}:checkoutDraft:${cartLocale}`, JSON.stringify(draft));
         window.location.href = `/${routeLocale}/commerce/confirmation`;
       });
     }

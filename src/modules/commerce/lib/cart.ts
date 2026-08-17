@@ -1,6 +1,8 @@
 // カート状態管理。ツールベンダーに一切依存しない。
 // マーケティングツール向けの変換(ACDL等)はacdl-bridge.tsが`cart:change`イベントを購読して行う。
 
+import siteConfig from '../../../../site.config';
+
 export type CartItem = {
   slug: string;
   title: string;
@@ -36,7 +38,7 @@ declare global {
   }
 }
 
-const STORAGE_PREFIX = 'astro-table:cart:';
+const STORAGE_PREFIX = `${siteConfig.storagePrefix}:cart:`;
 
 function cartKey(locale: string): string {
   return `${STORAGE_PREFIX}${locale}`;

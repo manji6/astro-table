@@ -2,6 +2,8 @@
 // commerceのcart.tsと同じパターン(localStorage + 素朴なTS関数 + CustomEvent + storageイベントでの
 // クロスタブ同期)を踏襲する。commerceには一切依存しない、独立したオプトインモジュール。
 
+import siteConfig from '../../../../site.config';
+
 export type Member = {
   id: string;
   attributes: Record<string, string>;
@@ -39,7 +41,7 @@ declare global {
   }
 }
 
-const STORAGE_PREFIX = 'astro-table:member:';
+const STORAGE_PREFIX = `${siteConfig.storagePrefix}:member:`;
 const ROSTER_KEY = `${STORAGE_PREFIX}roster`;
 const SESSION_KEY = `${STORAGE_PREFIX}session`;
 

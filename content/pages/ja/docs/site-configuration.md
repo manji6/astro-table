@@ -23,6 +23,8 @@ export interface SiteConfig {
   member: {
     enabled: boolean;
   };
+  // カート・会員・お気に入り等、localStorageキーの先頭に付けるサイト固有のプレフィックス。
+  storagePrefix: string;
 }
 ```
 
@@ -48,6 +50,7 @@ const siteConfig: SiteConfig = {
   member: {
     enabled: true,
   },
+  storagePrefix: 'astro-table',
 };
 
 export default siteConfig;
@@ -58,6 +61,10 @@ export default siteConfig;
 ### `member` — 会員機能のOn/Off
 
 `member.enabled`は、ログイン/会員発行ページ、ログイン状態オーバーレイ、ACDLへのuserネームスペース連携をまとめて有効化・無効化するスイッチです。`false`にすると、これらの会員関連機能は組み込まれません。実データを扱わない検証用サイトや、会員機能が不要なサイトでは`false`のままにしておくのが安全です。
+
+### `storagePrefix` — localStorageキーのプレフィックス
+
+カート(`cart.ts`)・会員(`member.ts`)・お気に入り(`favorites.ts`)・チェックアウト関連のlocalStorageキーは、すべて`${storagePrefix}:cart:...`のように、この値を先頭に付けて保存されます。このテンプレートを使って複数のサイトをローカルで並行して動かす場合や、他のサイトとlocalStorageの名前空間を分けたい場合は、サイトごとに固有の値(例: 実際のサイト名やプロジェクトコード名)に変更してください。
 
 ## `astro.config.mjs`
 

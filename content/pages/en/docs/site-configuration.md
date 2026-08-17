@@ -24,6 +24,9 @@ export interface SiteConfig {
   member: {
     enabled: boolean;
   };
+  // Site-specific prefix prepended to localStorage keys for cart, member, and
+  // favorites data.
+  storagePrefix: string;
 }
 ```
 
@@ -49,6 +52,7 @@ const siteConfig: SiteConfig = {
   member: {
     enabled: true,
   },
+  storagePrefix: 'astro-table',
 };
 
 export default siteConfig;
@@ -59,6 +63,10 @@ If you need to swap tag containers between production and preview, reference an 
 ### `member` — toggling the member feature
 
 `member.enabled` is a single switch that enables or disables the login/member-signup pages, the login-state overlay, and the ACDL user-namespace integration together. Setting it to `false` excludes all of these member-related features from the build. Keeping it `false` is the safer default for verification sites that don't handle real user data, or for sites that don't need a member feature at all.
+
+### `storagePrefix` — the localStorage key prefix
+
+Cart (`cart.ts`), member (`member.ts`), favorites (`favorites.ts`), and checkout-related localStorage keys are all stored with this value prepended, e.g. `${storagePrefix}:cart:...`. If you're running multiple sites built on this template locally at once, or want to keep this site's localStorage namespace separate from another site's, change this to something specific to your site (its real name or a project code name, for example).
 
 ## `astro.config.mjs`
 
