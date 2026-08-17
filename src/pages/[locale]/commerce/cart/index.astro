@@ -1,0 +1,150 @@
+---
+// カートページ。カート内容の一覧・数量変更・削除・小計表示。
+import Base from '../../../../layouts/Base.astro';
+
+export async function getStaticPaths() {
+  return ['ja', 'en'].map((locale) => ({ params: { locale } }));
+}
+
+const { locale } = Astro.params;
+const text =
+  locale === 'ja'
+    ? {
+        title: 'カート',
+        commerce: 'コマースサイト',
+        empty: 'カートは空です。',
+        backToTop: 'トップへ戻る',
+        checkout: 'レジに進む',
+      }
+    : {
+        title: 'Cart',
+        commerce: 'Commerce',
+        empty: 'Your cart is empty.',
+        backToTop: 'Back to top',
+        checkout: 'Proceed to checkout',
+      };
+---
+
+<Base
+  title={text.title}
+  pageType="cart"
+  locale={locale}
+  path="commerce/cart"
+  breadcrumbs={[{ label: text.commerce, href: `/${locale}/commerce` }, { label: text.title }]}
+>
+  <div class="cart-page" data-locale={locale}>
+    <h1>{text.title}</h1>
+    <div class="cart-page__empty" hidden>
+      <p>{text.empty}</p>
+      <a href={`/${locale}/`}>{text.backToTop}</a>
+    </div>
+    <ul class="cart-page__items"></ul>
+    <p class="cart-page__subtotal"></p>
+    <a class="cart-page__checkout" href={`/${locale}/commerce/cart/checkout`}>{text.checkout}</a>
+  </div>
+</Base>
+
+<style is:global>
+  /* .cart-page__items の中身(li/img/input)はクライアントJSがinnerHTMLで挿入するため、
+     Astroの通常のスコープドCSS(ビルド時に静的要素へ付与されるdata-astro-cid属性)が
+     効かない。このページに限りグローバルスタイルとして定義する。 */
+  .cart-page__items {
+    list-style: none;
+    padding: 0;
+  }
+  .cart-page__items li {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #ddd;
+  }
+  .cart-page__items img {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+  .cart-page__title {
+    flex: 1;
+  }
+  .cart-page__quantity {
+    width: 4rem;
+  }
+</style>
+
+<script>
+  // ACDLパターンA(中央集権ブリッジ)を有効化する。updateQuantity/removeItemの呼び出しを
+  // 購読するため、カート変更が起こりうるページ(PDP・カートページ)で読み込む必要がある。
+  import '../../../../modules/commerce/lib/acdl-bridge';
+  import { getCart, removeItem, updateQuantity } from '../../../../modules/commerce/lib/cart';
+  import { toProductLocale } from '../../../../modules/commerce/lib/locale';
+
+  const root = document.querySelector<HTMLElement>('.cart-page');
+  if (root) {
+    const routeLocale = root.dataset.locale as string;
+    const cartLocale = toProductLocale(routeLocale);
+    const itemsEl = root.querySelector<HTMLElement>('.cart-page__items');
+    const emptyEl = root.querySelector<HTMLElement>('.cart-page__empty');
+    const subtotalEl = root.querySelector<HTMLElement>('.cart-page__subtotal');
+    const checkoutLink = root.querySelector<HTMLAnchorElement>('.cart-page__checkout');
+
+    function formatCurrency(amount: number, currency: string): string {
+      return new Intl.NumberFormat(cartLocale, { style: 'currency', currency }).format(amount);
+    }
+
+    function render(): void {
+      if (!itemsEl || !emptyEl || !subtotalEl) return;
+      const cart = getCart(cartLocale);
+
+      if (cart.items.length === 0) {
+        emptyEl.hidden = false;
+        itemsEl.innerHTML = '';
+        subtotalEl.textContent = '';
+        checkoutLink?.setAttribute('aria-disabled', 'true');
+        return;
+      }
+
+      emptyEl.hidden = true;
+      checkoutLink?.removeAttribute('aria-disabled');
+
+      itemsEl.innerHTML = cart.items
+        .map(
+          (item) => `
+            <li data-slug="${item.slug}">
+              <img src="${item.image}" alt="${item.title}" />
+              <span class="cart-page__title">${item.title}</span>
+              <input type="number" min="0" value="${item.quantity}" class="cart-page__quantity" />
+              <span class="cart-page__line-total">${formatCurrency(item.price * item.quantity, item.currency)}</span>
+              <button type="button" class="cart-page__remove">&times;</button>
+            </li>`,
+        )
+        .join('');
+
+      const subtotal = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      const currency = cart.items[0]?.currency ?? 'JPY';
+      const label = routeLocale === 'ja' ? '小計' : 'Subtotal';
+      subtotalEl.textContent = `${label}: ${formatCurrency(subtotal, currency)}`;
+    }
+
+    itemsEl?.addEventListener('change', (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement) || !target.classList.contains('cart-page__quantity')) return;
+      const slug = target.closest('li')?.dataset.slug;
+      if (slug) updateQuantity(cartLocale, slug, Number(target.value));
+    });
+
+    itemsEl?.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || !target.classList.contains('cart-page__remove')) return;
+      const slug = target.closest('li')?.dataset.slug;
+      if (slug) removeItem(cartLocale, slug);
+    });
+
+    window.addEventListener('cart:change', (event) => {
+      if (event.detail.locale === cartLocale) render();
+    });
+
+    render();
+  }
+</script>

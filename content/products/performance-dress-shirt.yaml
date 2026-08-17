@@ -1,0 +1,12 @@
+sku: WKDY-SHT-001
+images:
+  - /images/products/performance-dress-shirt.png
+categories: [wear]
+tags: [business, quick-dry]
+stock: in_stock
+prices:
+  ja-JP: { currency: JPY, amount: 9800 }
+  en-US: { currency: USD, amount: 69.99 }
+translations:
+  ja-JP: { title: "吸汗速乾ドレスシャツ", description: "汗染みが気にならない吸汗速乾素材のドレスシャツ。商談前の一枚に。" }
+  en-US: { title: "Performance Dress Shirt", description: "A moisture-wicking dress shirt that keeps you presentable from the morning commute to the closing pitch." }

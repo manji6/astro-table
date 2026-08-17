@@ -1,0 +1,52 @@
+---
+// config系Block(2列key-value)。行の1列目=見出し、2列目=本文。
+// 開閉操作はBlockローカルな操作のため、ACDLパターンBでpushEvent()を直接呼ぶ。
+import type { Cell } from '../../lib/markdown/parse-page';
+
+export interface Props {
+  name: string;
+  variants: string[];
+  rows: Cell[][];
+}
+
+const { rows } = Astro.props;
+---
+
+<div class="accordion">
+  {
+    rows.map((row) => {
+      const [titleCell, bodyCell] = row;
+      return (
+        <details class="accordion__item">
+          <summary class="accordion__title">{titleCell?.text}</summary>
+          <div class="accordion__body" set:html={bodyCell?.html} />
+        </details>
+      );
+    })
+  }
+</div>
+
+<style>
+  .accordion__item {
+    border-bottom: 1px solid #ddd;
+    padding: 0.75rem 0;
+  }
+  .accordion__title {
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .accordion__body {
+    padding-top: 0.5rem;
+  }
+</style>
+
+<script>
+  import { pushEvent } from '../../lib/acdl';
+
+  document.querySelectorAll<HTMLDetailsElement>('.accordion__item').forEach((item) => {
+    item.addEventListener('toggle', () => {
+      const label = item.querySelector('.accordion__title')?.textContent ?? '';
+      pushEvent('accordion_toggle', { blockName: 'accordion', label, state: item.open ? 'open' : 'closed' });
+    });
+  });
+</script>

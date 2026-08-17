@@ -1,0 +1,12 @@
+sku: WKDY-BAG-001
+images:
+  - /images/products/gym-backpack-2way.png
+categories: [bags]
+tags: [2way, gym]
+stock: in_stock
+prices:
+  ja-JP: { currency: JPY, amount: 14000 }
+  en-US: { currency: USD, amount: 99.99 }
+translations:
+  ja-JP: { title: "2WAYジムバックパック", description: "PC収納とウェア用の独立コンパートメントを備えた、通勤とジム通いを1つにまとめるバックパック。" }
+  en-US: { title: "2-Way Gym Backpack", description: "A backpack with a dedicated laptop sleeve and a separate compartment for gym wear, made for the commute-to-workout routine." }

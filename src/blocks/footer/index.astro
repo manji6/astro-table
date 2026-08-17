@@ -1,0 +1,55 @@
+---
+// 列の位置ベース解釈: [0]=リンクラベル [1]=リンク先
+import type { Cell } from '../../lib/markdown/parse-page';
+
+export interface Props {
+  name: string;
+  variants: string[];
+  rows: Cell[][];
+}
+
+const { rows } = Astro.props;
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <nav class="site-footer__nav" aria-label="フッターナビゲーション">
+    <ul>
+      {rows.map((row) => {
+        const [labelCell, hrefCell] = row;
+        return (
+          <li>
+            <a href={hrefCell?.text || '#'}>{labelCell?.text}</a>
+          </li>
+        );
+      })}
+    </ul>
+  </nav>
+  <p class="site-footer__copyright">&copy; {year} AstroTable</p>
+</footer>
+
+<style>
+  .site-footer {
+    /* 横方向の余白はglobal.css側の共通コンテナルール(.site-footerに対するpadding-inline)が
+       担うので、ここでは縦方向のみ指定する(header/main/breadcrumbsと同じ考え方)。 */
+    padding-block: 1.5rem;
+    border-top: 1px solid #ddd;
+    margin-top: 2rem;
+  }
+  .site-footer__nav ul {
+    display: flex;
+    gap: 1.5rem;
+    list-style: none;
+    margin: 0 0 0.75rem;
+    padding: 0;
+  }
+  .site-footer__nav a {
+    text-decoration: none;
+    color: inherit;
+  }
+  .site-footer__copyright {
+    color: #666;
+    font-size: 0.875rem;
+    margin: 0;
+  }
+</style>

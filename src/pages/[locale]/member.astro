@@ -1,0 +1,248 @@
+---
+// 会員発行ページ。任意の会員IDと属性(key-value)を作成・更新する。
+// siteConfig.member.enabledがfalseの場合はgetStaticPathsが空配列を返し、
+// ビルド自体でこのページを生成しない(Astroの静的サイト生成に対する自然なOn/Off手段)。
+import Base from '../../layouts/Base.astro';
+import siteConfig from '../../../site.config';
+
+export async function getStaticPaths() {
+  if (!siteConfig.member.enabled) return [];
+  return ['ja', 'en'].map((locale) => ({ params: { locale } }));
+}
+
+const { locale } = Astro.params;
+const text =
+  locale === 'ja'
+    ? {
+        title: '会員発行',
+        idLabel: '会員ID',
+        addAttribute: '属性を追加',
+        keyPlaceholder: 'キー',
+        valuePlaceholder: '値',
+        save: '保存',
+        savedNew: '会員を登録しました。',
+        savedUpdate: '会員情報を更新しました。',
+        listTitle: '発行済み会員',
+        empty: 'まだ会員が登録されていません。',
+        edit: '編集',
+        login: 'ログインする',
+        remove: '削除',
+        exportLabel: 'エクスポート',
+        importLabel: 'インポート',
+      }
+    : {
+        title: 'Member Issuance',
+        idLabel: 'Member ID',
+        addAttribute: 'Add attribute',
+        keyPlaceholder: 'Key',
+        valuePlaceholder: 'Value',
+        save: 'Save',
+        savedNew: 'Member created.',
+        savedUpdate: 'Member updated.',
+        listTitle: 'Issued members',
+        empty: 'No members yet.',
+        edit: 'Edit',
+        login: 'Log in',
+        remove: 'Delete',
+        exportLabel: 'Export',
+        importLabel: 'Import',
+      };
+---
+
+<Base title={text.title} pageType="other" locale={locale} path="member">
+  <div class="member-page" data-locale={locale} data-text={JSON.stringify(text)}>
+    <h1>{text.title}</h1>
+
+    <form class="member-page__form">
+      <label>
+        {text.idLabel}
+        <input type="text" class="member-page__id" required />
+      </label>
+      <div class="member-page__attributes"></div>
+      <button type="button" class="member-page__add-attribute">{text.addAttribute}</button>
+      <button type="submit" class="member-page__save">{text.save}</button>
+      <p class="member-page__message" role="status"></p>
+    </form>
+
+    <section>
+      <h2>{text.listTitle}</h2>
+      <p class="member-page__empty" hidden>{text.empty}</p>
+      <ul class="member-page__members"></ul>
+    </section>
+
+    <section class="member-page__io">
+      <button type="button" class="member-page__export">{text.exportLabel}</button>
+      <label>
+        {text.importLabel}
+        <input type="file" accept="application/json" class="member-page__import" />
+      </label>
+    </section>
+  </div>
+</Base>
+
+<style>
+  .member-page__attributes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0.75rem 0;
+  }
+</style>
+
+<style is:global>
+  /* .member-page__attributes/.member-page__members の中身はクライアントJSがinnerHTMLで
+     挿入するため、cart-pageと同様グローバルスタイルとして定義する。 */
+  .member-page__attribute-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .member-page__members {
+    list-style: none;
+    padding: 0;
+  }
+  .member-page__members li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #ddd;
+  }
+  .member-page__member-summary {
+    flex: 1;
+  }
+</style>
+
+<script>
+  import { deleteMember, exportMembers, importMembers, listMembers, login, saveMember } from '../../modules/member/lib/member';
+  import type { Member } from '../../modules/member/lib/member';
+
+  const root = document.querySelector<HTMLElement>('.member-page');
+  if (root) {
+    const locale = root.dataset.locale as string;
+    const text = JSON.parse(root.dataset.text ?? '{}') as Record<string, string>;
+
+    const form = root.querySelector<HTMLFormElement>('.member-page__form');
+    const idInput = root.querySelector<HTMLInputElement>('.member-page__id');
+    const attributesEl = root.querySelector<HTMLElement>('.member-page__attributes');
+    const addAttributeButton = root.querySelector<HTMLButtonElement>('.member-page__add-attribute');
+    const messageEl = root.querySelector<HTMLElement>('.member-page__message');
+    const membersEl = root.querySelector<HTMLElement>('.member-page__members');
+    const emptyEl = root.querySelector<HTMLElement>('.member-page__empty');
+    const exportButton = root.querySelector<HTMLButtonElement>('.member-page__export');
+    const importInput = root.querySelector<HTMLInputElement>('.member-page__import');
+
+    function addAttributeRow(key = '', value = ''): void {
+      if (!attributesEl) return;
+      const row = document.createElement('div');
+      row.className = 'member-page__attribute-row';
+      row.innerHTML = `
+        <input type="text" class="member-page__attr-key" placeholder="${text.keyPlaceholder}" value="${key}" />
+        <input type="text" class="member-page__attr-value" placeholder="${text.valuePlaceholder}" value="${value}" />
+        <button type="button" class="member-page__remove-attribute">&times;</button>
+      `;
+      attributesEl.append(row);
+    }
+
+    function readAttributes(): Record<string, string> {
+      if (!attributesEl) return {};
+      const attributes: Record<string, string> = {};
+      attributesEl.querySelectorAll<HTMLElement>('.member-page__attribute-row').forEach((row) => {
+        const key = row.querySelector<HTMLInputElement>('.member-page__attr-key')?.value.trim();
+        const value = row.querySelector<HTMLInputElement>('.member-page__attr-value')?.value ?? '';
+        if (key) attributes[key] = value;
+      });
+      return attributes;
+    }
+
+    function loadIntoForm(member: Member): void {
+      if (!idInput || !attributesEl) return;
+      idInput.value = member.id;
+      attributesEl.innerHTML = '';
+      const entries = Object.entries(member.attributes);
+      if (entries.length === 0) addAttributeRow();
+      else entries.forEach(([key, value]) => addAttributeRow(key, value));
+    }
+
+    function renderMembers(): void {
+      if (!membersEl || !emptyEl) return;
+      const members = listMembers();
+      emptyEl.hidden = members.length > 0;
+      membersEl.innerHTML = members
+        .map((member) => {
+          const summary = Object.entries(member.attributes)
+            .map(([key, value]) => `${key}=${value}`)
+            .join(', ');
+          return `
+            <li data-id="${member.id}">
+              <span class="member-page__member-summary"><strong>${member.id}</strong>${summary ? ` (${summary})` : ''}</span>
+              <button type="button" class="member-page__edit">${text.edit}</button>
+              <button type="button" class="member-page__login">${text.login}</button>
+              <button type="button" class="member-page__delete">${text.remove}</button>
+            </li>`;
+        })
+        .join('');
+    }
+
+    addAttributeButton?.addEventListener('click', () => addAttributeRow());
+
+    attributesEl?.addEventListener('click', (event) => {
+      const target = event.target;
+      if (target instanceof HTMLElement && target.classList.contains('member-page__remove-attribute')) {
+        target.closest('.member-page__attribute-row')?.remove();
+      }
+    });
+
+    form?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      if (!idInput || !messageEl) return;
+      const id = idInput.value;
+      const isNew = !listMembers().some((m) => m.id === id.trim());
+      saveMember(id, readAttributes());
+      messageEl.textContent = isNew ? text.savedNew : text.savedUpdate;
+      renderMembers();
+    });
+
+    membersEl?.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const li = target.closest<HTMLElement>('li[data-id]');
+      const id = li?.dataset.id;
+      if (!id) return;
+
+      if (target.classList.contains('member-page__edit')) {
+        const member = listMembers().find((m) => m.id === id);
+        if (member) loadIntoForm(member);
+      } else if (target.classList.contains('member-page__login')) {
+        login(id);
+        window.location.href = `/${locale}/login`;
+      } else if (target.classList.contains('member-page__delete')) {
+        deleteMember(id);
+        renderMembers();
+      }
+    });
+
+    exportButton?.addEventListener('click', () => {
+      const blob = new Blob([exportMembers()], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'members.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    importInput?.addEventListener('change', async () => {
+      const file = importInput.files?.[0];
+      if (!file) return;
+      const json = await file.text();
+      importMembers(json);
+      renderMembers();
+      importInput.value = '';
+    });
+
+    window.addEventListener('member:change', renderMembers);
+
+    addAttributeRow();
+    renderMembers();
+  }
+</script>

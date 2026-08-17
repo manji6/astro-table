@@ -1,0 +1,83 @@
+---
+// マイページ(`/commerce/member/`)。ログイン中会員向けのハブページ。
+// 現状のコンテンツはお気に入り一覧への導線のみ。
+// member機能がOffのサイトではこのページ自体を生成しない(member.astro/login.astroと同じ
+// On/Offパターン)。
+import Base from '../../../../layouts/Base.astro';
+import siteConfig from '../../../../../site.config';
+
+export async function getStaticPaths() {
+  if (!siteConfig.member.enabled) return [];
+  return ['ja', 'en'].map((locale) => ({ params: { locale } }));
+}
+
+const { locale } = Astro.params;
+const text =
+  locale === 'ja'
+    ? {
+        title: 'マイページ',
+        loggedInAs: 'ログイン中の会員ID:',
+        favoritesLink: 'お気に入り一覧',
+        notLoggedIn: 'マイページの表示にはログインが必要です。',
+        loginLink: 'ログインページへ',
+      }
+    : {
+        title: 'My Page',
+        loggedInAs: 'Logged in as:',
+        favoritesLink: 'Favorites',
+        notLoggedIn: 'Please log in to view your My Page.',
+        loginLink: 'Go to login page',
+      };
+---
+
+<Base
+  title={text.title}
+  pageType="other"
+  locale={locale}
+  path="commerce/member"
+  breadcrumbs={[{ label: text.title }]}
+>
+  <div class="mypage" data-locale={locale} data-text={JSON.stringify(text)}>
+    <h1>{text.title}</h1>
+    <div class="mypage__logged-in" hidden>
+      <p class="mypage__current-id"></p>
+      <ul class="mypage__links">
+        <li><a href={`/${locale}/commerce/member/favorites`}>{text.favoritesLink}</a></li>
+      </ul>
+    </div>
+    <div class="mypage__logged-out" hidden>
+      <p>{text.notLoggedIn}</p>
+      <a href={`/${locale}/login`}>{text.loginLink}</a>
+    </div>
+  </div>
+</Base>
+
+<script>
+  import { getCurrentMember } from '../../../../modules/member/lib/member';
+
+  const root = document.querySelector<HTMLElement>('.mypage');
+  if (root) {
+    const text = JSON.parse(root.dataset.text ?? '{}') as Record<string, string>;
+    const loggedInEl = root.querySelector<HTMLElement>('.mypage__logged-in');
+    const loggedOutEl = root.querySelector<HTMLElement>('.mypage__logged-out');
+    const currentIdEl = root.querySelector<HTMLElement>('.mypage__current-id');
+
+    function render(): void {
+      if (!loggedInEl || !loggedOutEl || !currentIdEl) return;
+      const member = getCurrentMember();
+      if (member) {
+        loggedInEl.hidden = false;
+        loggedOutEl.hidden = true;
+        currentIdEl.textContent = `${text.loggedInAs} ${member.id}`;
+      } else {
+        loggedInEl.hidden = true;
+        loggedOutEl.hidden = false;
+      }
+    }
+
+    window.addEventListener('member:login', render);
+    window.addEventListener('member:logout', render);
+
+    render();
+  }
+</script>

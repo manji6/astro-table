@@ -1,0 +1,63 @@
+---
+// config系Block(2列key-value)。行の1列目=キー、2列目=値。
+// 対応キー: title(テキスト), image(画像), cta(リンク)
+import type { Cell } from '../../lib/markdown/parse-page';
+
+export interface Props {
+  name: string;
+  variants: string[];
+  rows: Cell[][];
+}
+
+const { rows } = Astro.props;
+
+const config: Record<string, Cell> = {};
+for (const row of rows) {
+  const [keyCell, valueCell] = row;
+  if (keyCell && valueCell) {
+    config[keyCell.text.trim().toLowerCase()] = valueCell;
+  }
+}
+
+const title = config.title?.text;
+const image = config.image?.images[0];
+const cta = config.cta?.links[0];
+---
+
+<section class="hero" style={image ? `background-image: url(${image.src})` : undefined}>
+  <div class="hero__content">
+    {title && <h1 class="hero__title">{title}</h1>}
+    {cta && (
+      <a class="hero__cta" href={cta.href}>
+        {cta.text}
+      </a>
+    )}
+  </div>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    padding: 4rem 2rem;
+    background-size: cover;
+    background-position: center;
+    background-color: #222;
+    color: #fff;
+  }
+  .hero__content {
+    max-width: 40rem;
+  }
+  .hero__title {
+    font-size: 2rem;
+    margin: 0 0 1rem;
+  }
+  .hero__cta {
+    display: inline-block;
+    padding: 0.5rem 1.5rem;
+    background: #fff;
+    color: #111;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+</style>

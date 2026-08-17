@@ -1,0 +1,65 @@
+---
+// Blockライブラリの個別ページ。1ページ1Block(アトミックな情報構造)。
+// localeごとにexample.<locale>.mdがあればそちらを使う(無ければexample.mdにフォールバック)。
+import Base from '../../../layouts/Base.astro';
+import BlockRenderer from '../../../components/BlockRenderer.astro';
+import { getBlockLibraryItems } from '../../../lib/block-library';
+
+export async function getStaticPaths() {
+  const locales = ['ja', 'en'];
+  const paths = await Promise.all(
+    locales.map(async (locale) => {
+      const items = await getBlockLibraryItems(locale);
+      return items.map((item) => ({ params: { locale, name: item.name }, props: { item } }));
+    }),
+  );
+  return paths.flat();
+}
+
+const { item } = Astro.props;
+const { locale } = Astro.params;
+
+const text =
+  locale === 'ja'
+    ? { back: '← Block一覧に戻る', preview: 'プレビュー', source: 'ソース', libraryTitle: 'Blockライブラリ' }
+    : { back: '← Back to Block Library', preview: 'Preview', source: 'Source', libraryTitle: 'Block Library' };
+---
+
+<Base
+  title={`${item.name} — ${text.libraryTitle}`}
+  pageType="other"
+  locale={locale}
+  path={`block-library/${item.name}`}
+  breadcrumbs={[{ label: text.libraryTitle, href: `/${locale}/block-library` }, { label: item.name }]}
+>
+  <p><a href={`/${locale}/block-library`}>{text.back}</a></p>
+  <h1>{item.name}</h1>
+  <p class="block-library__description">{item.description}</p>
+
+  <h2>{text.preview}</h2>
+  <div class="block-library__preview">
+    <BlockRenderer tree={item.tree} />
+  </div>
+
+  <h2>{text.source}</h2>
+  <pre class="block-library__source"><code>{item.source}</code></pre>
+</Base>
+
+<style>
+  .block-library__description {
+    color: var(--color-muted, #666);
+  }
+  .block-library__preview {
+    padding: 1rem;
+    border: 1px dashed var(--color-border, #ddd);
+    border-radius: 4px;
+    margin-bottom: 1rem;
+  }
+  .block-library__source {
+    background: #f6f6f6;
+    padding: 1rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 0.875rem;
+  }
+</style>

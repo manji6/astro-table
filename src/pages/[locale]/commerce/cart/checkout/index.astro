@@ -1,0 +1,112 @@
+---
+// チェックアウトページ。実際の購入処理は行わないダミーフォーム。
+import Base from '../../../../../layouts/Base.astro';
+
+export async function getStaticPaths() {
+  return ['ja', 'en'].map((locale) => ({ params: { locale } }));
+}
+
+const { locale } = Astro.params;
+const text =
+  locale === 'ja'
+    ? {
+        title: 'ご購入手続き',
+        commerce: 'コマースサイト',
+        cart: 'カート',
+        name: 'お名前',
+        address: 'ご住所',
+        payment: 'お支払い方法',
+        creditCard: 'クレジットカード',
+        cod: '代金引換',
+        submit: '注文を確定する',
+      }
+    : {
+        title: 'Checkout',
+        commerce: 'Commerce',
+        cart: 'Cart',
+        name: 'Name',
+        address: 'Address',
+        payment: 'Payment method',
+        creditCard: 'Credit card',
+        cod: 'Cash on delivery',
+        submit: 'Place order',
+      };
+---
+
+<Base
+  title={text.title}
+  pageType="checkout"
+  locale={locale}
+  path="commerce/cart/checkout"
+  breadcrumbs={[
+    { label: text.commerce, href: `/${locale}/commerce` },
+    { label: text.cart, href: `/${locale}/commerce/cart` },
+    { label: text.title },
+  ]}
+>
+  <div class="checkout-page" data-locale={locale}>
+    <h1>{text.title}</h1>
+    <form class="checkout-page__form">
+      <label>
+        {text.name}
+        <input type="text" name="name" required />
+      </label>
+      <label>
+        {text.address}
+        <input type="text" name="address" required />
+      </label>
+      <label>
+        {text.payment}
+        <select name="payment">
+          <option value="credit-card">{text.creditCard}</option>
+          <option value="cod">{text.cod}</option>
+        </select>
+      </label>
+      <button type="submit">{text.submit}</button>
+    </form>
+  </div>
+</Base>
+
+<script>
+  import { getCart } from '../../../../../modules/commerce/lib/cart';
+  import { toProductLocale } from '../../../../../modules/commerce/lib/locale';
+
+  const root = document.querySelector<HTMLElement>('.checkout-page');
+  if (root) {
+    const routeLocale = root.dataset.locale as string;
+    const cartLocale = toProductLocale(routeLocale);
+    const cart = getCart(cartLocale);
+
+    if (cart.items.length === 0) {
+      window.location.replace(`/${routeLocale}/commerce/cart`);
+    } else {
+      window.adobeDataLayer = window.adobeDataLayer || [];
+      window.adobeDataLayer.push({
+        event: 'begin_checkout',
+        order: {
+          currency: cart.items[0]?.currency,
+          total: cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+          items: cart.items.map((item) => ({
+            sku: item.sku,
+            name: item.title,
+            price: item.price,
+            quantity: item.quantity,
+          })),
+        },
+      });
+
+      const form = root.querySelector<HTMLFormElement>('.checkout-page__form');
+      form?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const formData = new FormData(form);
+        const draft = {
+          name: String(formData.get('name') ?? ''),
+          address: String(formData.get('address') ?? ''),
+          payment: String(formData.get('payment') ?? ''),
+        };
+        localStorage.setItem(`astro-table:checkoutDraft:${cartLocale}`, JSON.stringify(draft));
+        window.location.href = `/${routeLocale}/commerce/confirmation`;
+      });
+    }
+  }
+</script>

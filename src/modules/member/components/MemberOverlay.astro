@@ -1,0 +1,144 @@
+---
+// ログイン状態オーバーレイ。全ページ共通で「今ログイン中かどうか」の表示・
+// ログアウト・クイックスイッチ(発行済み会員IDからの即時ログイン)を提供する。
+// Astroの Dev Toolbar (https://docs.astro.build/en/guides/dev-toolbar/) をUXの着想元とするが、
+// Dev Toolbarはastro dev専用でビルド成果物に含まれないため、独自の固定表示コンポーネントとして
+// 実装している。Base.astroからsiteConfig.member.enabled時のみ条件付きで差し込まれる(レイアウト
+// コンポーネントであり、Blockではない。Breadcrumbs/LanguageSwitcherと同じ立ち位置)。
+
+export interface Props {
+  locale?: string;
+}
+
+const { locale } = Astro.props;
+const loginHref = locale ? `/${locale}/login` : '/login';
+
+const text =
+  locale === 'ja'
+    ? {
+        loggedInPrefix: 'ログイン中:',
+        logout: 'ログアウト',
+        quickLogin: 'ログイン',
+        loginLink: 'ログインページへ',
+        noMembers: '会員が未登録です',
+      }
+    : {
+        loggedInPrefix: 'Logged in:',
+        logout: 'Log out',
+        quickLogin: 'Log in',
+        loginLink: 'Go to login page',
+        noMembers: 'No members registered',
+      };
+---
+
+<div class="member-overlay" data-login-href={loginHref} data-text={JSON.stringify(text)}>
+  <div class="member-overlay__logged-in" hidden>
+    <span class="member-overlay__current-id"></span>
+    <button type="button" class="member-overlay__logout">{text.logout}</button>
+  </div>
+  <div class="member-overlay__logged-out" hidden>
+    <select class="member-overlay__quick-switch"></select>
+    <button type="button" class="member-overlay__quick-login">{text.quickLogin}</button>
+    <a class="member-overlay__login-link" href={loginHref}>{text.loginLink}</a>
+  </div>
+</div>
+
+<style>
+  .member-overlay {
+    position: fixed;
+    bottom: 0.75rem;
+    right: 0.75rem;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(17, 17, 17, 0.9);
+    color: #fff;
+    border-radius: 0.5rem;
+    font-size: 0.8rem;
+  }
+  .member-overlay__logged-in,
+  .member-overlay__logged-out {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  /* 直前の`display: flex`は[hidden]属性のUA既定(display:none)を上書きしてしまうため、
+     明示的に上書きし直す(login.astroで踏んだのと同じ罠)。 */
+  .member-overlay__logged-in[hidden],
+  .member-overlay__logged-out[hidden] {
+    display: none;
+  }
+  .member-overlay a.member-overlay__login-link {
+    color: #9cf;
+  }
+</style>
+
+<script>
+  // ACDLパターンA(中央集権ブリッジ)を有効化する。member:login/member:logoutは
+  // login.astro・member.astro・このオーバーレイ自身のいずれからでも発火しうるが、このコンポーネント
+  // 自体がsiteConfig.member.enabled時に全ページへ差し込まれる(Base.astro参照)ため、
+  // ここで読み込めば発生源に関わらず確実にACDLへ届く。
+  import '../lib/acdl-bridge';
+  import { getCurrentMember, listMembers, login, logout } from '../lib/member';
+
+  const root = document.querySelector<HTMLElement>('.member-overlay');
+  if (root) {
+    const text = JSON.parse(root.dataset.text ?? '{}') as Record<string, string>;
+
+    const loggedInEl = root.querySelector<HTMLElement>('.member-overlay__logged-in');
+    const loggedOutEl = root.querySelector<HTMLElement>('.member-overlay__logged-out');
+    const currentIdEl = root.querySelector<HTMLElement>('.member-overlay__current-id');
+    const logoutButton = root.querySelector<HTMLButtonElement>('.member-overlay__logout');
+    const quickSwitchSelect = root.querySelector<HTMLSelectElement>('.member-overlay__quick-switch');
+    const quickLoginButton = root.querySelector<HTMLButtonElement>('.member-overlay__quick-login');
+
+    function renderQuickSwitchOptions(): void {
+      if (!quickSwitchSelect) return;
+      const members = listMembers();
+      if (members.length === 0) {
+        quickSwitchSelect.innerHTML = `<option value="">${text.noMembers}</option>`;
+        quickSwitchSelect.disabled = true;
+        if (quickLoginButton) quickLoginButton.disabled = true;
+        return;
+      }
+      quickSwitchSelect.disabled = false;
+      if (quickLoginButton) quickLoginButton.disabled = false;
+      quickSwitchSelect.innerHTML = members.map((m) => `<option value="${m.id}">${m.id}</option>`).join('');
+    }
+
+    function render(): void {
+      if (!loggedInEl || !loggedOutEl || !currentIdEl) return;
+      const member = getCurrentMember();
+      if (member) {
+        loggedInEl.hidden = false;
+        loggedOutEl.hidden = true;
+        currentIdEl.textContent = `${text.loggedInPrefix} ${member.id}`;
+      } else {
+        loggedInEl.hidden = true;
+        loggedOutEl.hidden = false;
+        renderQuickSwitchOptions();
+      }
+    }
+
+    logoutButton?.addEventListener('click', () => {
+      logout();
+      render();
+    });
+
+    quickLoginButton?.addEventListener('click', () => {
+      const id = quickSwitchSelect?.value;
+      if (id) {
+        login(id);
+        render();
+      }
+    });
+
+    window.addEventListener('member:login', render);
+    window.addEventListener('member:logout', render);
+    window.addEventListener('member:change', render);
+
+    render();
+  }
+</script>

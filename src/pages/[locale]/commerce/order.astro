@@ -1,0 +1,113 @@
+---
+// 注文完了(サンクス)ページ。
+import Base from '../../../layouts/Base.astro';
+
+export async function getStaticPaths() {
+  return ['ja', 'en'].map((locale) => ({ params: { locale } }));
+}
+
+const { locale } = Astro.params;
+const text =
+  locale === 'ja'
+    ? {
+        title: 'ご注文ありがとうございました',
+        commerce: 'コマースサイト',
+        orderId: '注文番号',
+        total: '合計',
+        notFound: '注文情報が見つかりませんでした。',
+        backToTop: 'トップへ戻る',
+      }
+    : {
+        title: 'Thank you for your order',
+        commerce: 'Commerce',
+        orderId: 'Order number',
+        total: 'Total',
+        notFound: 'No order information was found.',
+        backToTop: 'Back to top',
+      };
+---
+
+<Base
+  title={text.title}
+  pageType="order-complete"
+  locale={locale}
+  path="commerce/order"
+  breadcrumbs={[{ label: text.commerce, href: `/${locale}/commerce` }, { label: text.title }]}
+>
+  <div class="complete-page" data-locale={locale}>
+    <div class="complete-page__found">
+      <h1>{text.title}</h1>
+      <p class="complete-page__order-id"></p>
+      <ul class="complete-page__items"></ul>
+      <p class="complete-page__total"></p>
+    </div>
+    <div class="complete-page__not-found" hidden>
+      <p>{text.notFound}</p>
+      <a href={`/${locale}/`}>{text.backToTop}</a>
+    </div>
+  </div>
+</Base>
+
+<style is:global>
+  /* .complete-page__itemsの中身はクライアントJSがinnerHTMLで挿入するため、
+     通常のAstroスコープドCSSではなくグローバルスタイルとして定義する。 */
+  .complete-page__items {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0;
+  }
+  .complete-page__items li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #ddd;
+  }
+</style>
+
+<script is:inline define:vars={{ orderIdLabel: text.orderId, totalLabel: text.total }}>
+  window.__completePageLabels = { orderIdLabel, totalLabel };
+</script>
+<script>
+  import { toProductLocale } from '../../../modules/commerce/lib/locale';
+
+  interface LastOrder {
+    orderId: string;
+    currency: string;
+    total: number;
+    items: Array<{ sku: string; name: string; price: number; quantity: number }>;
+  }
+
+  const root = document.querySelector<HTMLElement>('.complete-page');
+  if (root) {
+    const routeLocale = root.dataset.locale as string;
+    const cartLocale = toProductLocale(routeLocale);
+    const raw = localStorage.getItem(`astro-table:lastOrder:${cartLocale}`);
+    const foundEl = root.querySelector<HTMLElement>('.complete-page__found');
+    const notFoundEl = root.querySelector<HTMLElement>('.complete-page__not-found');
+    const labels = (window as unknown as { __completePageLabels: { orderIdLabel: string; totalLabel: string } })
+      .__completePageLabels;
+
+    if (!raw) {
+      if (foundEl) foundEl.hidden = true;
+      if (notFoundEl) notFoundEl.hidden = false;
+    } else {
+      const order = JSON.parse(raw) as LastOrder;
+      const orderIdEl = root.querySelector('.complete-page__order-id');
+      const itemsEl = root.querySelector('.complete-page__items');
+      const totalEl = root.querySelector('.complete-page__total');
+
+      if (orderIdEl) orderIdEl.textContent = `${labels.orderIdLabel}: ${order.orderId}`;
+      if (itemsEl) {
+        itemsEl.innerHTML = order.items.map((item) => `<li>${item.name} × ${item.quantity}</li>`).join('');
+      }
+      if (totalEl) {
+        const formattedTotal = new Intl.NumberFormat(cartLocale, {
+          style: 'currency',
+          currency: order.currency,
+        }).format(order.total);
+        totalEl.textContent = `${labels.totalLabel}: ${formattedTotal}`;
+      }
+
+      window.adobeDataLayer = window.adobeDataLayer || [];
+      window.adobeDataLayer.push({ event: 'purchase', order });
+    }
+  }
+</script>

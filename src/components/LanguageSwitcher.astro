@@ -1,0 +1,46 @@
+---
+// 言語切り替えUI。astro:i18nの公式ヘルパーでURLを生成する。
+// 対応ロケール一覧はastro.config.mjsのi18n.localesと一致させること。
+import { getRelativeLocaleUrl } from 'astro:i18n';
+
+export interface Props {
+  locale: string;
+  path: string;
+}
+
+const LOCALES = ['ja', 'en'] as const;
+
+const { locale, path } = Astro.props;
+---
+
+<nav class="lang-switcher" aria-label="言語切り替え">
+  {
+    LOCALES.map((loc) => (
+      <a
+        href={getRelativeLocaleUrl(loc, path)}
+        aria-current={loc === locale ? 'true' : undefined}
+        class={loc === locale ? 'lang-switcher__link is-current' : 'lang-switcher__link'}
+      >
+        {loc.toUpperCase()}
+      </a>
+    ))
+  }
+</nav>
+
+<style>
+  .lang-switcher {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0 1.5rem;
+    font-size: 0.875rem;
+  }
+  .lang-switcher__link {
+    text-decoration: none;
+    color: inherit;
+    opacity: 0.6;
+  }
+  .lang-switcher__link.is-current {
+    opacity: 1;
+    font-weight: 700;
+  }
+</style>

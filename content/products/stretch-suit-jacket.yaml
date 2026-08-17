@@ -1,0 +1,12 @@
+sku: WKDY-JKT-001
+images:
+  - /images/products/stretch-suit-jacket.png
+categories: [wear]
+tags: [business, stretch, new-arrival]
+stock: in_stock
+prices:
+  ja-JP: { currency: JPY, amount: 28000 }
+  en-US: { currency: USD, amount: 189.99 }
+translations:
+  ja-JP: { title: "ストレッチスーツジャケット", description: "動きやすさと着心地を両立した、ビジネスシーンでも違和感のないストレッチ素材のテーラードジャケット。" }
+  en-US: { title: "Stretch Suit Jacket", description: "A tailored jacket in stretch fabric that moves with you, sharp enough for the boardroom." }

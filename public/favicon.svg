@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <rect x="2" y="2" width="20" height="20" rx="3" fill="none" stroke="#000" stroke-width="2" />
+    <line x1="2" y1="9" x2="22" y2="9" stroke="#000" stroke-width="2" />
+    <line x1="9" y1="9" x2="9" y2="22" stroke="#000" stroke-width="2" />
+    <style>
+        rect, line { stroke: #000; }
+        @media (prefers-color-scheme: dark) {
+            rect, line { stroke: #FFF; }
+        }
+    </style>
+</svg>

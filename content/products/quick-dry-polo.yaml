@@ -1,0 +1,12 @@
+sku: WKDY-POL-001
+images:
+  - /images/products/quick-dry-polo.png
+categories: [wear]
+tags: [quick-dry, business-casual]
+stock: in_stock
+prices:
+  ja-JP: { currency: JPY, amount: 7200 }
+  en-US: { currency: USD, amount: 49.99 }
+translations:
+  ja-JP: { title: "吸汗速乾ポロシャツ", description: "ビジネスカジュアルにも対応できる、上品な光沢感のある吸汗速乾ポロシャツ。" }
+  en-US: { title: "Quick-Dry Polo Shirt", description: "A business-casual polo with a subtle sheen and moisture-wicking performance." }

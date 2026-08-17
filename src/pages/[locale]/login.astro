@@ -1,0 +1,119 @@
+---
+// ログインページ。会員IDを入力してログイン状態にする。事前に会員発行ページ
+// (member.astro)で発行済みのID以外はエラーになる。
+// siteConfig.member.enabledがfalseの場合はgetStaticPathsが空配列を返し、
+// ビルド自体でこのページを生成しない(member.astroと同じ仕組み)。
+import Base from '../../layouts/Base.astro';
+import siteConfig from '../../../site.config';
+
+export async function getStaticPaths() {
+  if (!siteConfig.member.enabled) return [];
+  return ['ja', 'en'].map((locale) => ({ params: { locale } }));
+}
+
+const { locale } = Astro.params;
+const text =
+  locale === 'ja'
+    ? {
+        title: 'ログイン',
+        idLabel: '会員ID',
+        login: 'ログイン',
+        logout: 'ログアウト',
+        error: '登録されていない会員IDです。会員発行ページで先に登録してください。',
+        loggedInAs: 'ログイン中の会員ID:',
+        memberPageLink: '会員発行ページへ',
+        homeLink: 'トップへ戻る',
+      }
+    : {
+        title: 'Login',
+        idLabel: 'Member ID',
+        login: 'Log in',
+        logout: 'Log out',
+        error: 'This member ID is not registered. Register it on the member issuance page first.',
+        loggedInAs: 'Logged in as:',
+        memberPageLink: 'Go to member issuance',
+        homeLink: 'Back to top',
+      };
+---
+
+<Base title={text.title} pageType="other" locale={locale} path="login">
+  <div class="login-page" data-locale={locale} data-text={JSON.stringify(text)}>
+    <h1>{text.title}</h1>
+
+    <div class="login-page__status" hidden>
+      <p><strong class="login-page__current-id"></strong></p>
+      <button type="button" class="login-page__logout">{text.logout}</button>
+    </div>
+
+    <form class="login-page__form">
+      <label>
+        {text.idLabel}
+        <input type="text" class="login-page__id" required />
+      </label>
+      <button type="submit">{text.login}</button>
+      <p class="login-page__error" role="alert" hidden>{text.error}</p>
+    </form>
+
+    <p><a href={`/${locale}/member`}>{text.memberPageLink}</a></p>
+    <p><a href={`/${locale}/`}>{text.homeLink}</a></p>
+  </div>
+</Base>
+
+<style>
+  /* global.cssの `form { display: flex }` が [hidden] のUA既定(display:none)を
+     上書きしてしまうため、明示的に上書きし直す。 */
+  .login-page__form[hidden] {
+    display: none;
+  }
+</style>
+
+<script>
+  import { getCurrentMember, login, logout } from '../../modules/member/lib/member';
+
+  const root = document.querySelector<HTMLElement>('.login-page');
+  if (root) {
+    const text = JSON.parse(root.dataset.text ?? '{}') as Record<string, string>;
+
+    const statusEl = root.querySelector<HTMLElement>('.login-page__status');
+    const currentIdEl = root.querySelector<HTMLElement>('.login-page__current-id');
+    const logoutButton = root.querySelector<HTMLButtonElement>('.login-page__logout');
+    const form = root.querySelector<HTMLFormElement>('.login-page__form');
+    const idInput = root.querySelector<HTMLInputElement>('.login-page__id');
+    const errorEl = root.querySelector<HTMLElement>('.login-page__error');
+
+    function render(): void {
+      if (!statusEl || !form || !currentIdEl) return;
+      const member = getCurrentMember();
+      if (member) {
+        statusEl.hidden = false;
+        form.hidden = true;
+        currentIdEl.textContent = `${text.loggedInAs} ${member.id}`;
+      } else {
+        statusEl.hidden = true;
+        form.hidden = false;
+      }
+    }
+
+    form?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      if (!idInput || !errorEl) return;
+      const result = login(idInput.value);
+      if (!result) {
+        errorEl.hidden = false;
+        return;
+      }
+      errorEl.hidden = true;
+      render();
+    });
+
+    logoutButton?.addEventListener('click', () => {
+      logout();
+      render();
+    });
+
+    window.addEventListener('member:login', render);
+    window.addEventListener('member:logout', render);
+
+    render();
+  }
+</script>

@@ -1,0 +1,100 @@
+---
+// パンくずリスト。LanguageSwitcherと同じ「レイアウトコンポーネント」の位置づけで、
+// 著者がMarkdownに書くBlockではない(Blockの{name, variants, rows}契約には現在パスが渡らないため)。
+//
+// 2つのデータソースをサポートする。
+// - path: 通常ページ(pagesコレクション)用。URLパスの各祖先セグメントに対応する index ページの
+//   titleをpagesコレクションから自動で引いて組み立てる(コアの自動モード)
+// - trail: pagesコレクションに存在しないページ(PDP・カテゴリ一覧等のcommerceモジュール固定
+//   テンプレート)用に、呼び出し側が明示的に組み立てて渡す(手動モード)
+import { getCollection } from 'astro:content';
+
+export interface Crumb {
+  label: string;
+  href?: string;
+}
+
+export interface Props {
+  locale: string;
+  homeLabel: string;
+  path?: string;
+  trail?: Crumb[];
+}
+
+const { locale, homeLabel, path, trail } = Astro.props;
+
+async function buildAutoTrail(currentPath: string): Promise<Crumb[]> {
+  const segments = currentPath.split('/').filter(Boolean);
+  if (segments.length === 0) return [];
+
+  const pages = await getCollection('pages');
+  const byId = new Map(pages.map((entry) => [entry.id, entry]));
+
+  // 祖先セグメントに対応するindexページが存在しない場合(ディレクトリを切っただけでまだ
+  // index.mdを作っていない等)、そのレベルを黙って消さない。raw slugをリンクなしテキストとして
+  // 表示する(該当URLは実際には404になるため、存在しないページへリンクは張らない)。
+  const crumbs: Crumb[] = [];
+  for (let i = 0; i < segments.length - 1; i++) {
+    const prefix = segments.slice(0, i + 1).join('/');
+    const entry = byId.get(`${locale}/${prefix}/index`) ?? byId.get(`${locale}/${prefix}`);
+    crumbs.push({
+      label: entry?.data.title ?? segments[i],
+      href: entry ? `/${locale}/${prefix}` : undefined,
+    });
+  }
+
+  const currentEntry = byId.get(`${locale}/${currentPath}`);
+  crumbs.push({ label: currentEntry?.data.title ?? segments[segments.length - 1] });
+  return crumbs;
+}
+
+const items: Crumb[] = trail ?? (path ? await buildAutoTrail(path) : []);
+---
+
+{
+  items.length > 0 && (
+    <nav class="breadcrumbs" aria-label="breadcrumb">
+      <ol class="breadcrumbs__list">
+        <li class="breadcrumbs__item">
+          <a href={`/${locale}/`}>{homeLabel}</a>
+        </li>
+        {items.map((item, index) => (
+          <li class="breadcrumbs__item">
+            {item.href ? (
+              <a href={item.href}>{item.label}</a>
+            ) : (
+              // aria-current="page"は本当に「今表示しているページ」(=最後の項目)にだけ付ける。
+              // リンク先が存在しない祖先(index.md未作成)は、hrefは無いが現在ページではないため
+              // 単なるテキストとして表示する。
+              <span aria-current={index === items.length - 1 ? 'page' : undefined}>{item.label}</span>
+            )}
+          </li>
+        ))}
+      </ol>
+    </nav>
+  )
+}
+
+<style>
+  .breadcrumbs__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    list-style: none;
+    margin: 0;
+    /* <ol>のUAデフォルトスタイル(padding-inline-start: 40px、番号用の字下げ)を明示的に
+       打ち消す。横方向の余白はglobal.cssの.breadcrumbsコンテナ(他要素と共通)が担うので、
+       ここでは縦方向のみ指定する。 */
+    padding-block: 0.75rem;
+    padding-inline: 0;
+    font-size: 0.875rem;
+    color: var(--color-muted, #666);
+  }
+  .breadcrumbs__item a {
+    color: inherit;
+  }
+  .breadcrumbs__item:not(:last-child)::after {
+    content: '\203a';
+    margin-left: 0.25rem;
+  }
+</style>

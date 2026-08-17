@@ -1,0 +1,102 @@
+---
+// タブ切替パネル表示Block。accordionと構造が近く、実装を流用している。
+// 列の位置ベース解釈: [0]=タブラベル [1]=パネル内容。1行=1タブ。
+import type { Cell } from '../../lib/markdown/parse-page';
+
+export interface Props {
+  name: string;
+  variants: string[];
+  rows: Cell[][];
+}
+
+const { rows } = Astro.props;
+// 同一ページに複数のtabs Blockが並んでも、ARIA用のidが衝突しないよう毎回ユニークな接頭辞を振る。
+const uid = crypto.randomUUID().slice(0, 8);
+const tabs = rows.map((row, i) => {
+  const [labelCell, panelCell] = row;
+  return {
+    label: labelCell?.text ?? '',
+    html: panelCell?.html ?? '',
+    tabId: `tabs-${uid}-tab-${i}`,
+    panelId: `tabs-${uid}-panel-${i}`,
+  };
+});
+---
+
+<div class="tabs">
+  <div class="tabs__list" role="tablist">
+    {tabs.map((tab, i) => (
+      <button
+        type="button"
+        class="tabs__tab"
+        role="tab"
+        id={tab.tabId}
+        aria-selected={i === 0 ? 'true' : 'false'}
+        aria-controls={tab.panelId}
+        tabindex={i === 0 ? 0 : -1}
+      >
+        {tab.label}
+      </button>
+    ))}
+  </div>
+  {tabs.map((tab, i) => (
+    <div class="tabs__panel" role="tabpanel" id={tab.panelId} aria-labelledby={tab.tabId} hidden={i !== 0} set:html={tab.html} />
+  ))}
+</div>
+
+<style>
+  .tabs__list {
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 1px solid #ddd;
+  }
+  .tabs__tab {
+    padding: 0.5rem 1rem;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font: inherit;
+    /* global.cssのbutton要素向けリセット(color: var(--color-accent-contrast))を
+       打ち消す。無指定だとタブラベルが白文字のまま透明背景に乗り、見えなくなる。 */
+    color: inherit;
+  }
+  .tabs__tab[aria-selected='true'] {
+    border-bottom-color: currentColor;
+    font-weight: 600;
+  }
+  .tabs__panel {
+    padding-top: 1rem;
+  }
+</style>
+
+<script>
+  // キーボード操作(矢印キーでのタブ移動)・ARIA属性の切り替えを担う。ACDL計測はスコープ外。
+  document.querySelectorAll<HTMLElement>('.tabs').forEach((tabsEl) => {
+    const tabButtons = Array.from(tabsEl.querySelectorAll<HTMLButtonElement>('.tabs__tab'));
+    const panels = Array.from(tabsEl.querySelectorAll<HTMLElement>('.tabs__panel'));
+
+    function activate(index: number) {
+      tabButtons.forEach((btn, i) => {
+        const active = i === index;
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
+        btn.tabIndex = active ? 0 : -1;
+        panels[i].hidden = !active;
+      });
+      tabButtons[index].focus();
+    }
+
+    tabButtons.forEach((btn, i) => {
+      btn.addEventListener('click', () => activate(i));
+      btn.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowRight') {
+          event.preventDefault();
+          activate((i + 1) % tabButtons.length);
+        } else if (event.key === 'ArrowLeft') {
+          event.preventDefault();
+          activate((i - 1 + tabButtons.length) % tabButtons.length);
+        }
+      });
+    });
+  });
+</script>

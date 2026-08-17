@@ -1,0 +1,39 @@
+---
+// カテゴリTOP。taxonomyの全カテゴリをcardsBlockで一覧表示する。
+import { getEntry } from 'astro:content';
+import Base from '../../../../layouts/Base.astro';
+import Cards from '../../../../blocks/cards/index.astro';
+import type { Cell } from '../../../../lib/markdown/parse-page';
+
+export async function getStaticPaths() {
+  return ['ja', 'en'].map((locale) => ({ params: { locale } }));
+}
+
+const { locale } = Astro.params;
+const text =
+  locale === 'ja' ? { title: '商品カテゴリ', commerce: 'コマースサイト' } : { title: 'Categories', commerce: 'Commerce' };
+
+const taxonomyEntry = await getEntry('taxonomy', `categories-${locale}`);
+const categories = Object.entries(taxonomyEntry?.data ?? {});
+
+function textCell(text: string): Cell {
+  return { html: text, text, images: [], links: [] };
+}
+
+const rows: Cell[][] = categories.map(([slug, label]) => [
+  textCell(''),
+  textCell(label),
+  textCell(`/${locale}/commerce/category/${slug}`),
+]);
+---
+
+<Base
+  title={text.title}
+  pageType="category"
+  locale={locale}
+  path="commerce/category"
+  breadcrumbs={[{ label: text.commerce, href: `/${locale}/commerce` }, { label: text.title }]}
+>
+  <h1>{text.title}</h1>
+  <Cards name="cards" variants={[]} rows={rows} />
+</Base>

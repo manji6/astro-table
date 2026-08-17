@@ -1,0 +1,68 @@
+---
+// レンダリング層。PageTreeを受け取り、Block名 → /src/blocks/<name>/index.astro を
+// 動的に解決してrowsをpropsとして渡す。通常コンテンツはHTMLとしてそのまま出力する。
+import type { AstroComponentFactory } from 'astro/runtime/server/index.js';
+import type { PageTree, BlockNode, ProseNode } from '../lib/markdown/parse-page';
+
+export interface Props {
+  tree: PageTree;
+}
+
+type AstroComponentModule = { default: AstroComponentFactory };
+
+const { tree } = Astro.props;
+
+const blockModules = import.meta.glob<AstroComponentModule>('/src/blocks/*/index.astro');
+
+const knownBlockNames = Object.keys(blockModules)
+  .map((path) => path.match(/\/src\/blocks\/([^/]+)\/index\.astro$/)?.[1])
+  .filter((name): name is string => Boolean(name));
+
+async function resolveComponent(name: string) {
+  const key = `/src/blocks/${name}/index.astro`;
+  const loader = blockModules[key];
+  if (!loader) {
+    throw new Error(
+      `Unknown block "${name}". Known blocks: ${knownBlockNames.join(', ') || '(none)'}. ` +
+        'See /ja/docs/blocks (or /en/docs/blocks) for details.',
+    );
+  }
+  const mod = await loader();
+  return mod.default;
+}
+
+type ResolvedProse = ProseNode;
+type ResolvedBlock = BlockNode & { Component: AstroComponentFactory };
+
+const sections = await Promise.all(
+  tree.sections.map(async (section) => ({
+    // section-metadata BlockのstyleキーをこのセクションのCSSクラスとして
+    // 反映する。カンマ区切りで複数指定できる(例: "highlight, no-padding")。
+    className: [
+      'block-section',
+      ...(section.metadata?.style?.split(',').map((token) => token.trim()).filter(Boolean) ?? []),
+    ].join(' '),
+    children: await Promise.all(
+      section.children.map(async (child): Promise<ResolvedProse | ResolvedBlock> => {
+        if (child.type === 'prose') return child;
+        const Component = await resolveComponent(child.name);
+        return { ...child, Component };
+      }),
+    ),
+  })),
+);
+---
+
+{
+  sections.map((section) => (
+    <section class={section.className}>
+      {section.children.map((child) => {
+        if (child.type === 'prose') {
+          return <div class="prose" set:html={child.html} />;
+        }
+        const Component = child.Component;
+        return <Component name={child.name} variants={child.variants} rows={child.rows} />;
+      })}
+    </section>
+  ))
+}

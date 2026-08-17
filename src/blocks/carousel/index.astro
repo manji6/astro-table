@@ -1,0 +1,284 @@
+---
+// 画像/コンテンツの自動切替カルーセルBlock。2列(位置ベース:
+// [0]=画像(省略可) [1]=自由記述のコンテンツ)。コンテンツ列はcolumns Blockと同様、
+// セルのHTMLをそのまま描画するため、見出し・複数段落・CTAリンクなど自由に書ける
+// (AEM Block Collectionのcarousel Blockの認証モデルを参考に、Astroコンポーネントとして
+// 書き起こしたもの。コードそのものは流用していない)。
+import type { Cell } from '../../lib/markdown/parse-page';
+
+export interface Props {
+  name: string;
+  variants: string[];
+  rows: Cell[][];
+}
+
+const { rows, variants } = Astro.props;
+const uid = crypto.randomUUID().slice(0, 8);
+
+// 自動再生はvariantで明示的にオンにする(既定はOFF)。
+// `autoplay` = 5秒間隔、`autoplay:<秒数>` = 秒数を指定(例: autoplay:3)。
+const autoplayVariant = variants.find((v) => /^autoplay(:\d+)?$/.test(v));
+const autoplayEnabled = Boolean(autoplayVariant);
+const autoplaySeconds = autoplayVariant?.includes(':') ? Number(autoplayVariant.split(':')[1]) : 5;
+
+// Single/Multipleモード: 行数で自動判定する(variant不要)。1行だけの場合は
+// ナビゲーション(矢印・ドット)・自動再生を一切出さない(AEMのisSingleSlideと同じ考え方)。
+const isMultiple = rows.length > 1;
+const hasLoop = isMultiple;
+
+// ラップアラウンド時も他のスライドと同じ方向にアニメーションさせるため、
+// トラックの前後に先頭/末尾スライドの複製を1枚ずつ置く(「リール」方式)。
+// 複製へ到達したら、transitionend後に見えないうちに実スライドの位置へ瞬時に戻す。
+const trackRows = hasLoop ? [rows[rows.length - 1], ...rows, rows[0]] : rows;
+const initialPosition = hasLoop ? 1 : 0;
+---
+
+<div
+  class="carousel"
+  id={`carousel-${uid}`}
+  role="region"
+  aria-roledescription="carousel"
+  aria-label="カルーセル"
+  data-loop={hasLoop ? 'true' : 'false'}
+  data-autoplay={autoplayEnabled ? 'true' : 'false'}
+  data-autoplay-seconds={autoplaySeconds}
+>
+  <div class="carousel__viewport">
+    <ul class="carousel__track" style={`transform: translateX(-${initialPosition * 100}%)`}>
+      {
+        trackRows.map((row, i) => {
+          const [imageCell, contentCell] = row;
+          const image = imageCell?.images[0];
+          const isClone = hasLoop && (i === 0 || i === trackRows.length - 1);
+          const isCurrent = i === initialPosition;
+          return (
+            <li class="carousel__slide" data-clone={isClone ? 'true' : undefined} aria-hidden={isCurrent ? undefined : 'true'}>
+              {image && <img class="carousel__image" src={image.src} alt={image.alt} />}
+              {contentCell?.html && <div class="carousel__content" set:html={contentCell.html} />}
+            </li>
+          );
+        })
+      }
+    </ul>
+  </div>
+  {
+    isMultiple && (
+      <>
+        <button type="button" class="carousel__prev" aria-label="前のスライド">
+          ‹
+        </button>
+        <button type="button" class="carousel__next" aria-label="次のスライド">
+          ›
+        </button>
+        <div class="carousel__dots">
+          {rows.map((_, i) => (
+            <button
+              type="button"
+              class="carousel__dot"
+              aria-label={`${i + 1}枚目のスライドへ`}
+              aria-current={i === 0 ? 'true' : undefined}
+            />
+          ))}
+        </div>
+      </>
+    )
+  }
+</div>
+
+<style>
+  .carousel {
+    position: relative;
+  }
+  .carousel__viewport {
+    overflow: hidden;
+  }
+  .carousel__track {
+    display: flex;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    transition: transform 0.4s ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .carousel__track {
+      transition: none;
+    }
+  }
+  .carousel__slide {
+    flex: 0 0 100%;
+    text-align: center;
+  }
+  .carousel__slide[aria-hidden='true'] {
+    visibility: hidden;
+  }
+  .carousel__image {
+    width: 100%;
+    max-height: 320px;
+    object-fit: cover;
+  }
+  .carousel__content {
+    margin: 0.75rem auto 0;
+    max-width: 40rem;
+  }
+  .carousel__content :global(:first-child) {
+    margin-top: 0;
+  }
+  .carousel__content :global(:last-child) {
+    margin-bottom: 0;
+  }
+  .carousel__prev,
+  .carousel__next {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .carousel__prev {
+    left: 0.5rem;
+  }
+  .carousel__next {
+    right: 0.5rem;
+  }
+  .carousel__dots {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+  .carousel__dot {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    border: none;
+    background: var(--color-border, #ddd);
+    cursor: pointer;
+    padding: 0;
+  }
+  .carousel__dot[aria-current='true'] {
+    background: var(--color-accent, #2563eb);
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('.carousel').forEach((carousel) => {
+    const track = carousel.querySelector<HTMLElement>('.carousel__track');
+    const slides = Array.from(carousel.querySelectorAll<HTMLElement>('.carousel__slide'));
+    const dots = Array.from(carousel.querySelectorAll<HTMLButtonElement>('.carousel__dot'));
+    if (!track || slides.length === 0) return;
+
+    const realCount = dots.length;
+    // 単一スライドはナビゲーション自体が不要(AEMのisSingleSlideと同じ考え方)。
+    if (realCount <= 1) return;
+
+    const hasLoop = carousel.dataset.loop === 'true';
+    // トラックは複製込みで [複製(末尾), 実0, 実1, ..., 実(n-1), 複製(先頭)] の並び。
+    const cloneEndPosition = slides.length - 1;
+    const realLastPosition = slides.length - 2;
+    let position = hasLoop ? 1 : 0;
+
+    const autoplayEnabled = carousel.dataset.autoplay === 'true';
+    const autoplaySeconds = Number(carousel.dataset.autoplaySeconds || '5');
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function realIndexFor(pos: number): number {
+      if (!hasLoop) return pos;
+      if (pos === 0) return realCount - 1;
+      if (pos === cloneEndPosition) return 0;
+      return pos - 1;
+    }
+
+    function render(withTransition: boolean) {
+      track!.style.transition = withTransition ? '' : 'none';
+      track!.style.transform = `translateX(-${position * 100}%)`;
+      const realIndex = realIndexFor(position);
+      // 表示/非表示はposition一致で切り替える(複製スライドも、遷移中に表示される間だけ表示状態にする)。
+      // これをしないと複製へ遷移する間ずっと何も見えず、アニメーションなしで瞬間的に切り替わって見える。
+      slides.forEach((slide, i) => {
+        if (i === position) slide.removeAttribute('aria-hidden');
+        else slide.setAttribute('aria-hidden', 'true');
+      });
+      dots.forEach((dot, i) => {
+        if (i === realIndex) dot.setAttribute('aria-current', 'true');
+        else dot.removeAttribute('aria-current');
+      });
+    }
+
+    function goTo(nextPosition: number) {
+      position = hasLoop
+        ? Math.max(0, Math.min(nextPosition, cloneEndPosition))
+        : (nextPosition + slides.length) % slides.length;
+      render(true);
+    }
+
+    function next() {
+      goTo(position + 1);
+    }
+    function prev() {
+      goTo(position - 1);
+    }
+
+    if (hasLoop) {
+      // 複製スライドに到達したら、見た目が同じ実スライドの位置へtransitionなしで瞬時に戻す
+      // (「リール」のように、ずっと同じ方向へ回り続けているように見せる)。
+      track.addEventListener('transitionend', (event) => {
+        if (event.target !== track || event.propertyName !== 'transform') return;
+        if (position === cloneEndPosition) {
+          position = 1;
+          render(false);
+          void track!.offsetWidth;
+          track!.style.transition = '';
+        } else if (position === 0) {
+          position = realLastPosition;
+          render(false);
+          void track!.offsetWidth;
+          track!.style.transition = '';
+        }
+      });
+    }
+
+    function startAutoplay() {
+      if (!autoplayEnabled || prefersReducedMotion) return;
+      timer = setInterval(next, autoplaySeconds * 1000);
+    }
+
+    function stopAutoplay() {
+      if (timer) clearInterval(timer);
+    }
+
+    carousel.querySelector('.carousel__prev')?.addEventListener('click', () => {
+      stopAutoplay();
+      prev();
+    });
+    carousel.querySelector('.carousel__next')?.addEventListener('click', () => {
+      stopAutoplay();
+      next();
+    });
+    dots.forEach((dot, i) => {
+      dot.addEventListener('click', () => {
+        stopAutoplay();
+        goTo(hasLoop ? i + 1 : i);
+      });
+    });
+    carousel.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowLeft') {
+        stopAutoplay();
+        prev();
+      } else if (event.key === 'ArrowRight') {
+        stopAutoplay();
+        next();
+      }
+    });
+    carousel.setAttribute('tabindex', '0');
+
+    startAutoplay();
+  });
+</script>

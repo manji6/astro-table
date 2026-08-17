@@ -1,0 +1,155 @@
+---
+// 共通レイアウト(・§6)。Header/Footerはnav/<locale>.md・footer/<locale>.mdを
+// 通常のBlockと同じ経路(パース層→レンダリング層)で再利用してレンダリングする。
+// 多言語対応はオプトイン機能。コア自体は特定のロケールを固定しない。
+import { parsePage } from '../lib/markdown/parse-page';
+import type { MetadataEntry } from '../lib/markdown/extract-metadata';
+import BlockRenderer from '../components/BlockRenderer.astro';
+import LanguageSwitcher from '../components/LanguageSwitcher.astro';
+import Breadcrumbs, { type Crumb } from '../components/Breadcrumbs.astro';
+import MemberOverlay from '../modules/member/components/MemberOverlay.astro';
+import siteConfig from '../../site.config';
+// 仮の全体デザイン(プレースホルダー)。本番デザイン確定後に差し替え・削除してよい。
+import '../styles/global.css';
+
+export interface Props {
+  title: string;
+  description?: string;
+  pageType?:
+    | 'top'
+    | 'campaign'
+    | 'category'
+    | 'search'
+    | 'product'
+    | 'cart'
+    | 'checkout'
+    | 'confirmation'
+    | 'order-complete'
+    | 'other';
+  ogImage?: string;
+  noindex?: boolean;
+  // 多言語対応(オプトイン)時のみ指定する。
+  locale?: string;
+  // 現在ページの、ロケールプレフィックスを除いたパス(言語切り替えUI・パンくずの自動組み立てに使用)。
+  path?: string;
+  // ページ本文のmetadata Blockから抽出した追加meta要素。
+  metadata?: MetadataEntry[];
+  // パンくずの手動trail。pagesコレクションに存在しないページ(commerceの固定
+  // テンプレート等)向け。指定しない場合はpathからpagesコレクションを自動で引く。
+  breadcrumbs?: Crumb[];
+}
+
+const {
+  title,
+  description,
+  pageType = 'other',
+  ogImage,
+  noindex = false,
+  locale,
+  path = '',
+  metadata = [],
+  breadcrumbs,
+} = Astro.props;
+
+// ACDLページコンテキスト。frontmatterから供給する。
+// localeは多言語対応(オプトイン)を使う場合のみ含める。
+const pageContext: Record<string, unknown> = { pageName: title, pageType };
+if (locale) pageContext.locale = locale;
+
+// nav/footerはロケール別ファイルを、パース層→レンダリング層の経路で再利用する。
+const navModules = import.meta.glob<string>('../../content/nav/*.md', {
+  eager: true,
+  query: '?raw',
+  import: 'default',
+});
+const footerModules = import.meta.glob<string>('../../content/footer/*.md', {
+  eager: true,
+  query: '?raw',
+  import: 'default',
+});
+
+function byLocale(modules: Record<string, string>): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const [modulePath, content] of Object.entries(modules)) {
+    const localeKey = modulePath.match(/\/([^/]+)\.md$/)?.[1];
+    if (localeKey) result[localeKey] = content;
+  }
+  return result;
+}
+
+const navByLocale = byLocale(navModules);
+const footerByLocale = byLocale(footerModules);
+const resolvedLocale = locale ?? Object.keys(navByLocale)[0];
+
+const navTree = parsePage(navByLocale[resolvedLocale] ?? '');
+const footerTree = parsePage(footerByLocale[resolvedLocale] ?? '');
+
+const homeLabel = resolvedLocale === 'ja' ? 'ホーム' : 'Home';
+---
+
+<html lang={resolvedLocale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta property="og:title" content={title} />
+    {description && <meta property="og:description" content={description} />}
+    {ogImage && <meta property="og:image" content={ogImage} />}
+
+    <!-- 本文のmetadata Blockで追加指定されたmeta要素。
+         og:/twitter:で始まるnameはproperty属性、それ以外はname属性で出力する(AEM互換)。 -->
+    {metadata.map(({ name, value }) => (
+      /^(og|twitter):/.test(name) ? (
+        <meta property={name} content={value} />
+      ) : (
+        <meta name={name} content={value} />
+      )
+    ))}
+
+    <!-- ACDL初期化。他のどのスクリプトよりも先に読み込む。 -->
+    <script is:inline define:vars={{ pageContext }}>
+      window.adobeDataLayer = window.adobeDataLayer || [];
+      window.adobeDataLayer.push({ page: pageContext });
+    </script>
+    <script>
+      import '@adobe/adobe-client-data-layer/dist/adobe-client-data-layer.min.js';
+    </script>
+
+    <!-- マーケティングタグ注入。ACDL初期化の後・他のどのスクリプトより前に出力する。 -->
+    {siteConfig.tags.scripts.map((tag) => (
+      <script is:inline src={tag.src} async={tag.async} defer={tag.defer} />
+    ))}
+    {siteConfig.tags.inlineHead.map((snippet) => <script is:inline set:html={snippet} />)}
+  </head>
+  <body>
+    <div class="site-header-row">
+      <BlockRenderer tree={navTree} />
+      {locale && <LanguageSwitcher locale={locale} path={path} />}
+    </div>
+    {locale && <Breadcrumbs locale={locale} homeLabel={homeLabel} path={path} trail={breadcrumbs} />}
+    <main>
+      <slot />
+    </main>
+    <footer>
+      <BlockRenderer tree={footerTree} />
+    </footer>
+    {siteConfig.member?.enabled && <MemberOverlay locale={locale} />}
+  </body>
+</html>
+
+<style>
+  .site-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  /* BlockRendererが生成する.block-sectionはBase.astroの外(別コンポーネント)の出力なので
+     :globalが必要。header Block自身のjustify-content:space-betweenが効くよう、
+     残り幅いっぱいに広げる。 */
+  .site-header-row > :global(.block-section) {
+    flex: 1;
+    min-width: 0;
+  }
+</style>

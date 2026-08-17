@@ -1,0 +1,39 @@
+---
+// Blockライブラリの埋め込み専用プレビュー。/<locale>/block-library/<name>のBase.astro
+// (ヘッダー・フッター・パンくず等のサイト共通レイアウト)を経由せず、レンダリング結果
+// だけを出力する。iframeでの埋め込み用途(例: ドキュメントページ上でのプレビュー表示)を
+// 想定した、ビルド時点で軽量な別ページとして生成する(実行時にCSSで隠すのではなく、
+// そもそもヘッダー・フッターのHTML自体を出力しない)。
+// 他ページと同じ[locale]配下に置くことで、ロケール別のURL生成は通常のi18nルーティング
+// に任せる(独自のロケール分岐を持たない)。該当ロケールのexample.<locale>.mdが無い
+// Blockはexample.md(既定)にフォールバックする。
+import BlockRenderer from '../../../../components/BlockRenderer.astro';
+import { getBlockLibraryItems } from '../../../../lib/block-library';
+import '../../../../styles/global.css';
+
+export async function getStaticPaths() {
+  const locales = ['ja', 'en'];
+  const paths = await Promise.all(
+    locales.map(async (locale) => {
+      const items = await getBlockLibraryItems(locale);
+      return items.map((item) => ({ params: { locale, name: item.name }, props: { item } }));
+    }),
+  );
+  return paths.flat();
+}
+
+const { item } = Astro.props;
+const { locale } = Astro.params;
+---
+
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{item.name} — preview</title>
+    <meta name="robots" content="noindex" />
+  </head>
+  <body>
+    <BlockRenderer tree={item.tree} />
+  </body>
+</html>

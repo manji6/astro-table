@@ -1,0 +1,12 @@
+sku: WKDY-ACC-002
+images:
+  - /images/products/performance-cap.png
+categories: [accessories]
+tags: [running, sun-protection]
+stock: out_of_stock
+prices:
+  ja-JP: { currency: JPY, amount: 4200 }
+  en-US: { currency: USD, amount: 29.99 }
+translations:
+  ja-JP: { title: "パフォーマンスキャップ", description: "吸汗速乾のインナーバンドを備えた軽量キャップ。屋外ミーティングにもランにも。" }
+  en-US: { title: "Performance Cap", description: "A lightweight cap with a moisture-wicking inner band, equally at home in an outdoor meeting or on a run." }

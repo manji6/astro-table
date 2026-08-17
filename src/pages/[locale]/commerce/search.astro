@@ -1,0 +1,116 @@
+---
+// キーワード検索結果一覧。静的1ページ+クライアントJS。
+import Base from '../../../layouts/Base.astro';
+
+export async function getStaticPaths() {
+  return ['ja', 'en'].map((locale) => ({ params: { locale } }));
+}
+
+const { locale } = Astro.params;
+const text =
+  locale === 'ja'
+    ? { title: 'キーワード検索', commerce: 'コマースサイト', placeholder: 'キーワードを入力', submit: '検索' }
+    : { title: 'Search', commerce: 'Commerce', placeholder: 'Enter a keyword', submit: 'Search' };
+---
+
+<Base
+  title={text.title}
+  pageType="search"
+  locale={locale}
+  path="commerce/search"
+  breadcrumbs={[{ label: text.commerce, href: `/${locale}/commerce` }, { label: text.title }]}
+>
+  <div class="search-page" data-locale={locale}>
+    <h1>{text.title}</h1>
+    <form class="search-form" method="get">
+      <input type="search" name="q" class="search-form__input" placeholder={text.placeholder} />
+      <button type="submit">{text.submit}</button>
+    </form>
+    <p class="search-status"></p>
+    <ul class="search-results"></ul>
+  </div>
+</Base>
+
+<style is:global>
+  /* .search-resultsの中身はクライアントJSがinnerHTMLで挿入するため、
+     通常のAstroスコープドCSSではなくグローバルスタイルとして定義する。 */
+  .search-form {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .search-results {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1rem;
+  }
+  .search-results li {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 0.75rem;
+  }
+  .search-results a {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+  }
+  .search-results img {
+    width: 100%;
+    height: auto;
+    margin-bottom: 0.5rem;
+  }
+</style>
+
+<script>
+  const root = document.querySelector<HTMLElement>('.search-page');
+  if (root) {
+    const locale = root.dataset.locale as string;
+    const params = new URLSearchParams(window.location.search);
+    const query = (params.get('q') ?? '').trim().toLowerCase();
+
+    const input = root.querySelector<HTMLInputElement>('.search-form__input');
+    if (input) input.value = params.get('q') ?? '';
+
+    const statusEl = root.querySelector('.search-status');
+    const listEl = root.querySelector('.search-results');
+
+    type IndexedProduct = {
+      slug: string;
+      title: string;
+      description: string;
+      image: string;
+      tags: string[];
+    };
+
+    if (query && statusEl && listEl) {
+      fetch(`/${locale}/commerce/products-index.json`)
+        .then((res) => res.json())
+        .then((products: IndexedProduct[]) => {
+          const hits = products.filter(
+            (product) =>
+              product.title.toLowerCase().includes(query) ||
+              product.description.toLowerCase().includes(query) ||
+              product.tags.some((tag) => tag.toLowerCase().includes(query)),
+          );
+
+          statusEl.textContent =
+            locale === 'ja' ? `${hits.length}件ヒットしました` : `${hits.length} result(s) found`;
+
+          listEl.innerHTML = hits
+            .map(
+              (product) => `
+                <li>
+                  <a href="/${locale}/commerce/detail/${product.slug}">
+                    <img src="${product.image}" alt="${product.title}" width="80" />
+                    <span>${product.title}</span>
+                  </a>
+                </li>`,
+            )
+            .join('');
+        });
+    }
+  }
+</script>

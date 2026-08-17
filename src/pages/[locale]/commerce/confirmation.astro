@@ -1,0 +1,158 @@
+---
+// 注文確認ページ。checkoutで入力した配送先/支払い方法とカート内容を確認し、
+// 「注文を確定する」を押した時点で初めて注文が確定する(lastOrderの書き込み・カートクリア)。
+import Base from '../../../layouts/Base.astro';
+
+export async function getStaticPaths() {
+  return ['ja', 'en'].map((locale) => ({ params: { locale } }));
+}
+
+const { locale } = Astro.params;
+const text =
+  locale === 'ja'
+    ? {
+        title: 'ご注文内容の確認',
+        commerce: 'コマースサイト',
+        name: 'お名前',
+        address: 'ご住所',
+        payment: 'お支払い方法',
+        creditCard: 'クレジットカード',
+        cod: '代金引換',
+        total: '合計',
+        submit: '注文を確定する',
+        notFound: '確認できる注文情報がありません。',
+        backToCart: 'カートに戻る',
+      }
+    : {
+        title: 'Confirm your order',
+        commerce: 'Commerce',
+        name: 'Name',
+        address: 'Address',
+        payment: 'Payment method',
+        creditCard: 'Credit card',
+        cod: 'Cash on delivery',
+        total: 'Total',
+        submit: 'Place order',
+        notFound: 'No order information was found.',
+        backToCart: 'Back to cart',
+      };
+---
+
+<Base
+  title={text.title}
+  pageType="confirmation"
+  locale={locale}
+  path="commerce/confirmation"
+  breadcrumbs={[{ label: text.commerce, href: `/${locale}/commerce` }, { label: text.title }]}
+>
+  <div class="confirmation-page" data-locale={locale}>
+    <div class="confirmation-page__found">
+      <h1>{text.title}</h1>
+      <dl class="confirmation-page__shipping">
+        <dt>{text.name}</dt>
+        <dd class="confirmation-page__name"></dd>
+        <dt>{text.address}</dt>
+        <dd class="confirmation-page__address"></dd>
+        <dt>{text.payment}</dt>
+        <dd class="confirmation-page__payment"></dd>
+      </dl>
+      <ul class="confirmation-page__items"></ul>
+      <p class="confirmation-page__total"></p>
+      <button type="button" class="confirmation-page__submit">{text.submit}</button>
+    </div>
+    <div class="confirmation-page__not-found" hidden>
+      <p>{text.notFound}</p>
+      <a href={`/${locale}/commerce/cart`}>{text.backToCart}</a>
+    </div>
+  </div>
+</Base>
+
+<style is:global>
+  /* .confirmation-page内の動的部分はクライアントJSがinnerHTML/textContentで挿入するため、
+     通常のAstroスコープドCSSではなくグローバルスタイルとして定義する(cart.astro等と同じ理由)。 */
+  .confirmation-page__items {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0;
+  }
+  .confirmation-page__items li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #ddd;
+  }
+</style>
+
+<script is:inline define:vars={{ creditCardLabel: text.creditCard, codLabel: text.cod }}>
+  window.__confirmationPageLabels = { creditCardLabel, codLabel };
+</script>
+<script>
+  import { clearCart, getCart } from '../../../modules/commerce/lib/cart';
+  import { toProductLocale } from '../../../modules/commerce/lib/locale';
+
+  interface CheckoutDraft {
+    name: string;
+    address: string;
+    payment: string;
+  }
+
+  const root = document.querySelector<HTMLElement>('.confirmation-page');
+  if (root) {
+    const routeLocale = root.dataset.locale as string;
+    const cartLocale = toProductLocale(routeLocale);
+    const cart = getCart(cartLocale);
+    const rawDraft = localStorage.getItem(`astro-table:checkoutDraft:${cartLocale}`);
+    const foundEl = root.querySelector<HTMLElement>('.confirmation-page__found');
+    const notFoundEl = root.querySelector<HTMLElement>('.confirmation-page__not-found');
+    const labels = (window as unknown as { __confirmationPageLabels: { creditCardLabel: string; codLabel: string } })
+      .__confirmationPageLabels;
+
+    if (!rawDraft || cart.items.length === 0) {
+      if (foundEl) foundEl.hidden = true;
+      if (notFoundEl) notFoundEl.hidden = false;
+    } else {
+      const draft = JSON.parse(rawDraft) as CheckoutDraft;
+
+      const nameEl = root.querySelector('.confirmation-page__name');
+      const addressEl = root.querySelector('.confirmation-page__address');
+      const paymentEl = root.querySelector('.confirmation-page__payment');
+      const itemsEl = root.querySelector('.confirmation-page__items');
+      const totalEl = root.querySelector('.confirmation-page__total');
+      const submitButton = root.querySelector<HTMLButtonElement>('.confirmation-page__submit');
+
+      if (nameEl) nameEl.textContent = draft.name;
+      if (addressEl) addressEl.textContent = draft.address;
+      if (paymentEl) paymentEl.textContent = draft.payment === 'cod' ? labels.codLabel : labels.creditCardLabel;
+
+      const total = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      const currency = cart.items[0]?.currency ?? 'JPY';
+
+      if (itemsEl) {
+        itemsEl.innerHTML = cart.items
+          .map((item) => `<li>${item.title} × ${item.quantity}</li>`)
+          .join('');
+      }
+      if (totalEl) {
+        totalEl.textContent = new Intl.NumberFormat(cartLocale, { style: 'currency', currency }).format(total);
+      }
+
+      submitButton?.addEventListener('click', () => {
+        const currentCart = getCart(cartLocale);
+        const orderId = `ORD-${Date.now()}`;
+        const lastOrder = {
+          orderId,
+          currency: currentCart.items[0]?.currency,
+          total: currentCart.items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+          items: currentCart.items.map((item) => ({
+            sku: item.sku,
+            name: item.title,
+            price: item.price,
+            quantity: item.quantity,
+          })),
+        };
+        localStorage.setItem(`astro-table:lastOrder:${cartLocale}`, JSON.stringify(lastOrder));
+        localStorage.removeItem(`astro-table:checkoutDraft:${cartLocale}`);
+        clearCart(cartLocale);
+        window.location.href = `/${routeLocale}/commerce/order`;
+      });
+    }
+  }
+</script>

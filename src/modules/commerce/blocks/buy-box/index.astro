@@ -1,0 +1,164 @@
+---
+// title/price/stock/追加ボタンを表示し、cart.tsにaddItem()する。
+// カート処理自体はcart.tsのみに依存し、ACDL連携はacdl-bridge.ts側(パターンA)に任せる。
+export interface Props {
+  slug: string;
+  sku: string;
+  title: string;
+  price: number;
+  currency: 'JPY' | 'USD';
+  categories: string[];
+  stock: 'in_stock' | 'out_of_stock';
+  image: string;
+  locale: string;
+}
+
+const UI_TEXT: Record<
+  string,
+  { inStock: string; outOfStock: string; addToCart: string; quantity: string; added: string }
+> = {
+  ja: {
+    inStock: '在庫あり',
+    outOfStock: '売り切れ',
+    addToCart: 'カートに入れる',
+    quantity: '数量',
+    added: 'カートに追加しました',
+  },
+  en: {
+    inStock: 'In stock',
+    outOfStock: 'Out of stock',
+    addToCart: 'Add to cart',
+    quantity: 'Quantity',
+    added: 'Added to cart',
+  },
+};
+
+const { slug, sku, title, price, currency, categories, stock, image, locale } = Astro.props;
+const cartLocale = locale === 'ja' ? 'ja-JP' : 'en-US';
+const text = UI_TEXT[locale] ?? UI_TEXT.ja;
+const formattedPrice = new Intl.NumberFormat(cartLocale, { style: 'currency', currency }).format(price);
+---
+
+<div
+  class="buy-box"
+  data-slug={slug}
+  data-sku={sku}
+  data-title={title}
+  data-price={price}
+  data-currency={currency}
+  data-categories={categories.join(',')}
+  data-image={image}
+  data-cart-locale={cartLocale}
+  data-added-text={text.added}
+>
+  <p class="buy-box__price">{formattedPrice}</p>
+  <p class="buy-box__stock" data-stock={stock}>{stock === 'in_stock' ? text.inStock : text.outOfStock}</p>
+  {
+    stock === 'in_stock' && (
+      <form class="buy-box__form">
+        <label class="buy-box__quantity-label">
+          {text.quantity}
+          <input type="number" min="1" value="1" class="buy-box__quantity" />
+        </label>
+        <button type="submit" class="buy-box__submit">
+          {text.addToCart}
+        </button>
+        <p class="buy-box__feedback" role="status" aria-live="polite"></p>
+      </form>
+    )
+  }
+</div>
+
+<style>
+  .buy-box__price {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+  .buy-box__stock[data-stock='out_of_stock'] {
+    color: #b91c1c;
+  }
+  .buy-box__form {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+  }
+  .buy-box__quantity-label {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 0;
+  }
+  .buy-box__quantity {
+    width: 4rem;
+  }
+  .buy-box__submit {
+    padding: 0.5rem 1.5rem;
+    background: #111;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.15s ease;
+  }
+  .buy-box__submit.is-added {
+    background: #15803d;
+  }
+  .buy-box__feedback {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #15803d;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .buy-box__feedback.is-visible {
+    opacity: 1;
+  }
+</style>
+
+<script>
+  import { addItem } from '../../lib/cart';
+
+  document.querySelectorAll<HTMLElement>('.buy-box').forEach((box) => {
+    const form = box.querySelector<HTMLFormElement>('.buy-box__form');
+    if (!form) return;
+
+    const submitButton = form.querySelector<HTMLButtonElement>('.buy-box__submit');
+    const feedback = form.querySelector<HTMLElement>('.buy-box__feedback');
+    let hideFeedbackTimeout: ReturnType<typeof setTimeout> | undefined;
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const quantityInput = form.querySelector<HTMLInputElement>('.buy-box__quantity');
+      const quantity = Math.max(1, Number(quantityInput?.value ?? '1'));
+
+      addItem(
+        box.dataset.cartLocale as string,
+        {
+          slug: box.dataset.slug as string,
+          sku: box.dataset.sku as string,
+          title: box.dataset.title as string,
+          price: Number(box.dataset.price),
+          currency: box.dataset.currency as 'JPY' | 'USD',
+          image: box.dataset.image as string,
+          categories: (box.dataset.categories ?? '').split(',').filter(Boolean),
+        },
+        quantity,
+      );
+
+      // 追加が完了したことを視覚的にフィードバックする(ボタン色の変化+メッセージ表示)。
+      if (feedback) {
+        feedback.textContent = box.dataset.addedText ?? '';
+        feedback.classList.add('is-visible');
+      }
+      submitButton?.classList.add('is-added');
+      clearTimeout(hideFeedbackTimeout);
+      hideFeedbackTimeout = setTimeout(() => {
+        feedback?.classList.remove('is-visible');
+        submitButton?.classList.remove('is-added');
+      }, 2000);
+    });
+  });
+</script>

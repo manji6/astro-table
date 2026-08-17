@@ -1,0 +1,12 @@
+sku: WKDY-SHU-002
+images:
+  - /images/products/business-sneakers.png
+categories: [shoes]
+tags: [business-casual, lightweight]
+stock: in_stock
+prices:
+  ja-JP: { currency: JPY, amount: 15000 }
+  en-US: { currency: USD, amount: 99.99 }
+translations:
+  ja-JP: { title: "ビジネススニーカー", description: "スーツにも合わせやすいレザー調のアッパーと、歩き疲れないクッションソールを両立。" }
+  en-US: { title: "Business Sneakers", description: "A leather-look upper dressy enough for a suit, paired with a cushioned sole for all-day comfort." }

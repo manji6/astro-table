@@ -1,0 +1,145 @@
+---
+// PDP(固定Astroテンプレート)。
+// ロケール×商品の直積でgetStaticPathsを生成する。
+import { getCollection, getEntry } from 'astro:content';
+import Base from '../../../../layouts/Base.astro';
+import ProductGallery from '../../../../modules/commerce/blocks/product-gallery/index.astro';
+import BuyBox from '../../../../modules/commerce/blocks/buy-box/index.astro';
+import RelatedProducts from '../../../../modules/commerce/blocks/related-products/index.astro';
+import { toProductLocale } from '../../../../modules/commerce/lib/locale';
+
+export async function getStaticPaths() {
+  const products = await getCollection('products');
+  return ['ja', 'en'].flatMap((locale) =>
+    products.map((product) => ({
+      params: { locale, slug: product.id },
+      props: { product },
+    })),
+  );
+}
+
+const { locale } = Astro.params;
+const { product } = Astro.props;
+const productLocale = toProductLocale(locale as string);
+const translation = product.data.translations[productLocale];
+const priceInfo = product.data.prices[productLocale];
+
+const favoriteText =
+  locale === 'ja' ? { add: 'お気に入りに追加', remove: 'お気に入りから削除' } : { add: 'Add to favorites', remove: 'Remove from favorites' };
+
+// パンくず。PDPはpagesコレクションに存在しないため、Breadcrumbsコンポーネントの
+// 手動trailモードを使う(商品は複数カテゴリを持てるため、先頭のカテゴリを代表として使う)。
+const primaryCategory = product.data.categories[0];
+const taxonomyEntry = await getEntry('taxonomy', `categories-${locale}`);
+const categoryLabel = taxonomyEntry?.data[primaryCategory] ?? primaryCategory;
+
+const allProducts = await getCollection('products');
+const related = allProducts
+  .filter((p) => p.id !== product.id && p.data.categories.some((c) => product.data.categories.includes(c)))
+  .slice(0, 4)
+  .map((p) => ({
+    slug: p.id,
+    title: p.data.translations[productLocale].title,
+    image: p.data.images[0],
+    href: `/${locale}/commerce/detail/${p.id}`,
+  }));
+---
+
+<Base
+  title={translation.title}
+  description={translation.description}
+  pageType="product"
+  locale={locale}
+  path={`commerce/detail/${product.id}`}
+  breadcrumbs={[
+    { label: categoryLabel, href: `/${locale}/commerce/category/${primaryCategory}` },
+    { label: translation.title },
+  ]}
+>
+  <article class="pdp">
+    <ProductGallery images={product.data.images} title={translation.title} />
+    <div class="pdp__info">
+      <h1>{translation.title}</h1>
+      <BuyBox
+        slug={product.id}
+        sku={product.data.sku}
+        title={translation.title}
+        price={priceInfo.amount}
+        currency={priceInfo.currency}
+        categories={product.data.categories}
+        stock={product.data.stock}
+        image={product.data.images[0]}
+        locale={locale as string}
+      />
+      <button type="button" class="favorite-button" data-slug={product.id} data-text={JSON.stringify(favoriteText)} hidden>
+        {favoriteText.add}
+      </button>
+      {translation.description && <p class="pdp__description">{translation.description}</p>}
+    </div>
+  </article>
+  {
+    related.length > 0 && (
+      <section class="pdp__related">
+        <h2>{locale === 'ja' ? '関連商品' : 'Related products'}</h2>
+        <RelatedProducts products={related} />
+      </section>
+    )
+  }
+</Base>
+
+<script
+  is:inline
+  define:vars={{
+    sku: product.data.sku,
+    productName: translation.title,
+    categories: product.data.categories,
+    price: priceInfo.amount,
+    currency: priceInfo.currency,
+  }}
+>
+  window.adobeDataLayer = window.adobeDataLayer || [];
+  window.adobeDataLayer.push({
+    event: 'view_item',
+    product: { sku, name: productName, categories, price, currency },
+  });
+</script>
+<script>
+  // ACDLパターンA(中央集権ブリッジ)を有効化する。buy-boxのaddItem()呼び出しを購読するため、
+  // カート変更が起こりうるページ(PDP・カートページ)で読み込む必要がある。
+  import '../../../../modules/commerce/lib/acdl-bridge';
+  import { renderFavoriteButton, toggleFavorite } from '../../../../modules/commerce/lib/favorite-button';
+
+  const favoriteButton = document.querySelector<HTMLButtonElement>('.favorite-button');
+  if (favoriteButton) {
+    const slug = favoriteButton.dataset.slug as string;
+    const labels = JSON.parse(favoriteButton.dataset.text ?? '{}');
+
+    const render = () => renderFavoriteButton(favoriteButton, slug, labels);
+
+    favoriteButton.addEventListener('click', () => {
+      toggleFavorite(slug);
+      render();
+    });
+
+    window.addEventListener('member:login', render);
+    window.addEventListener('member:logout', render);
+    window.addEventListener('favorites:change', render);
+
+    render();
+  }
+</script>
+
+<style>
+  .pdp {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+  }
+  .favorite-button {
+    margin-top: 0.5rem;
+  }
+  .favorite-button.is-active {
+    border-color: currentColor;
+    font-weight: 700;
+  }
+</style>

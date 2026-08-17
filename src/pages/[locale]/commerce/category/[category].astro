@@ -1,0 +1,46 @@
+---
+// カテゴリ一覧。cardsBlockを再利用して表示する。
+import { getCollection, getEntry } from 'astro:content';
+import Base from '../../../../layouts/Base.astro';
+import Cards from '../../../../blocks/cards/index.astro';
+import { toProductLocale } from '../../../../modules/commerce/lib/locale';
+import type { Cell } from '../../../../lib/markdown/parse-page';
+
+export async function getStaticPaths() {
+  const products = await getCollection('products');
+  const categories = [...new Set(products.flatMap((product) => product.data.categories))];
+  return ['ja', 'en'].flatMap((locale) => categories.map((category) => ({ params: { locale, category } })));
+}
+
+const { locale, category } = Astro.params;
+const productLocale = toProductLocale(locale as string);
+const products = await getCollection('products');
+const matched = products.filter((product) => product.data.categories.includes(category as string));
+
+const taxonomyEntry = await getEntry('taxonomy', `categories-${locale}`);
+const categoryLabel = taxonomyEntry?.data[category as string] ?? category;
+
+function textCell(text: string): Cell {
+  return { html: text, text, images: [], links: [] };
+}
+function imageCell(src: string, alt: string): Cell {
+  return { html: '', text: '', images: [{ src, alt }], links: [] };
+}
+
+const rows: Cell[][] = matched.map((product) => [
+  imageCell(product.data.images[0], product.data.translations[productLocale].title),
+  textCell(product.data.translations[productLocale].title),
+  textCell(`/${locale}/commerce/detail/${product.id}`),
+]);
+---
+
+<Base
+  title={categoryLabel}
+  pageType="category"
+  locale={locale}
+  path={`commerce/category/${category}`}
+  breadcrumbs={[{ label: categoryLabel }]}
+>
+  <h1>{categoryLabel}</h1>
+  <Cards name="cards" variants={[]} rows={rows} />
+</Base>

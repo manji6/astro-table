@@ -1,0 +1,17 @@
+---
+// ルート"/"。本番(Cloudflare Pages)ではpublic/_redirectsにより/ja/へ302
+// リダイレクトされるため実際には表示されないが、_redirectsはホスティング側の機能で
+// astroのdev/previewサーバーでは効かないため、ローカル確認用に実体を持たせておく。
+// 「起動成功が分かるHello World的なページ + 主要導線」というIssue本文の要求を満たす。
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="AstroTable" pageType="top">
+  <h1>Hello, AstroTable!</h1>
+  <p>AstroTableが正しく起動しました。</p>
+  <ul>
+    <li><a href="/ja/">日本語サイトへ(This site in Japanese)</a></li>
+    <li><a href="/ja/block-library">Blockライブラリ</a></li>
+    <li><a href="/ja/commerce">サンプルコマースサイト</a></li>
+  </ul>
+</Base>

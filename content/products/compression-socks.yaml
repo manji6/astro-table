@@ -1,0 +1,12 @@
+sku: WKDY-ACC-001
+images:
+  - /images/products/compression-socks.png
+categories: [accessories]
+tags: [running, recovery]
+stock: in_stock
+prices:
+  ja-JP: { currency: JPY, amount: 2400 }
+  en-US: { currency: USD, amount: 16.99 }
+translations:
+  ja-JP: { title: "コンプレッションソックス", description: "着圧設計で長時間の立ち仕事やランニング後の脚の疲労感を軽減します。" }
+  en-US: { title: "Compression Socks", description: "Graduated compression to ease leg fatigue after standing meetings or a long run." }

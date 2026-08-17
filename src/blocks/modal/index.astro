@@ -1,0 +1,81 @@
+---
+// ポップアップ表示Block。ネイティブの<dialog>要素を使うことで、フォーカス
+// トラップ・ESCキーでの閉じる操作を自前実装せずブラウザ標準の挙動に任せる。
+// 2列key-value形式(1列目=キー、2列目=値)。対応キー: trigger(開くボタンの文言)、
+// content(モーダル本文。Cellの制約上インライン要素のみ)。
+import type { Cell } from '../../lib/markdown/parse-page';
+
+export interface Props {
+  name: string;
+  variants: string[];
+  rows: Cell[][];
+}
+
+const { rows } = Astro.props;
+
+const config: Record<string, Cell> = {};
+for (const row of rows) {
+  const [keyCell, valueCell] = row;
+  if (keyCell && valueCell) {
+    config[keyCell.text.trim().toLowerCase()] = valueCell;
+  }
+}
+
+const triggerText = config.trigger?.text ?? '開く';
+const contentHtml = config.content?.html ?? '';
+const modalId = `modal-${crypto.randomUUID().slice(0, 8)}`;
+---
+
+<button type="button" class="modal__trigger" data-modal-target={modalId}>
+  {triggerText}
+</button>
+<dialog id={modalId} class="modal">
+  <button type="button" class="modal__close" aria-label="閉じる">×</button>
+  <div class="modal__body" set:html={contentHtml} />
+</dialog>
+
+<style>
+  .modal__trigger {
+    /* ボタンの基本スタイルはglobal.cssのbutton既定値を継承する */
+  }
+  .modal {
+    max-width: 32rem;
+    width: 90vw;
+    padding: 2rem;
+    border: none;
+    border-radius: 8px;
+  }
+  .modal::backdrop {
+    background: rgba(0, 0, 0, 0.5);
+  }
+  .modal__close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    border: none;
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.modal__trigger').forEach((trigger) => {
+    const targetId = trigger.dataset.modalTarget;
+    const dialog = targetId ? document.getElementById(targetId) : null;
+    if (!(dialog instanceof HTMLDialogElement)) return;
+
+    trigger.addEventListener('click', () => dialog.showModal());
+    dialog.querySelector('.modal__close')?.addEventListener('click', () => dialog.close());
+    // 背景(::backdrop)クリックで閉じる。dialog要素自体がクリックされた場合のみ判定する
+    // (中身のクリックはdialog要素までバブリングしないため、これで背景クリックだけを検知できる)。
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) dialog.close();
+    });
+  });
+</script>

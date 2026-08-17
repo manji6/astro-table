@@ -1,0 +1,40 @@
+---
+// コマースサイトTOP。検索・カテゴリ・カートへの導線を置く簡易ランディング。
+import Base from '../../../layouts/Base.astro';
+import siteConfig from '../../../../site.config';
+
+export async function getStaticPaths() {
+  return ['ja', 'en'].map((locale) => ({ params: { locale } }));
+}
+
+const { locale } = Astro.params;
+const text =
+  locale === 'ja'
+    ? {
+        title: 'コマースサイト',
+        search: '商品を検索する',
+        category: '商品カテゴリを見る',
+        campaign: 'キャンペーンを見る',
+        cart: 'カートを見る',
+        mypage: 'マイページ',
+      }
+    : {
+        title: 'Commerce',
+        search: 'Search products',
+        category: 'Browse categories',
+        campaign: 'View campaigns',
+        cart: 'View cart',
+        mypage: 'My Page',
+      };
+---
+
+<Base title={text.title} pageType="top" locale={locale} path="commerce" breadcrumbs={[{ label: text.title }]}>
+  <h1>{text.title}</h1>
+  <ul class="commerce-top__links">
+    <li><a href={`/${locale}/commerce/search`}>{text.search}</a></li>
+    <li><a href={`/${locale}/commerce/category`}>{text.category}</a></li>
+    <li><a href={`/${locale}/commerce/campaign`}>{text.campaign}</a></li>
+    <li><a href={`/${locale}/commerce/cart`}>{text.cart}</a></li>
+    {siteConfig.member.enabled && <li><a href={`/${locale}/commerce/member`}>{text.mypage}</a></li>}
+  </ul>
+</Base>

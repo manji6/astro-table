@@ -1,0 +1,12 @@
+sku: WKDY-BAG-002
+images:
+  - /images/products/commuter-briefcase.png
+categories: [bags]
+tags: [business, laptop]
+stock: in_stock
+prices:
+  ja-JP: { currency: JPY, amount: 22000 }
+  en-US: { currency: USD, amount: 149.99 }
+translations:
+  ja-JP: { title: "コミューターブリーフケース", description: "撥水加工を施した高耐久ナイロン製のビジネスブリーフケース。13インチノートPC収納可。" }
+  en-US: { title: "Commuter Briefcase", description: "A water-repellent, high-durability nylon briefcase with a padded sleeve for 13-inch laptops." }

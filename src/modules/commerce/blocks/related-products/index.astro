@@ -1,0 +1,27 @@
+---
+// 同一categoryの他商品をcards Blockで表示する(コアBlockを直接importして使い回す)。
+import Cards from '../../../../blocks/cards/index.astro';
+import type { Cell } from '../../../../lib/markdown/parse-page';
+
+export interface Props {
+  products: Array<{ slug: string; title: string; image: string; href: string }>;
+}
+
+const { products } = Astro.props;
+
+function textCell(text: string): Cell {
+  return { html: text, text, images: [], links: [] };
+}
+
+function imageCell(src: string, alt: string): Cell {
+  return { html: '', text: '', images: [{ src, alt }], links: [] };
+}
+
+const rows: Cell[][] = products.map((product) => [
+  imageCell(product.image, product.title),
+  textCell(product.title),
+  textCell(product.href),
+]);
+---
+
+<Cards name="cards" variants={[]} rows={rows} />

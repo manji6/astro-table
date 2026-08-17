@@ -1,0 +1,156 @@
+/*
+ * 仮の全体デザイン(プレースホルダー)。
+ * 本番デザインが決まるまでの間、フォーム・ボタン・タイポグラフィの見た目を最低限揃えるための
+ * グローバルスタイル。Blockごとのスコープドスタイルはこれを上書きしてよい。
+ */
+
+:root {
+  --color-text: #1a1a1a;
+  --color-muted: #666;
+  --color-border: #ddd;
+  --color-accent: #2563eb;
+  --color-accent-contrast: #fff;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --container-width: 72rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  color: var(--color-text);
+  background: #fff;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  line-height: 1.3;
+  margin: 0 0 0.75rem;
+}
+
+p {
+  margin: 0 0 1rem;
+}
+
+a {
+  color: var(--color-accent);
+}
+
+/* ヘッダー/フッター/メインコンテンツ/パンくずの横幅・余白を揃えるコンテナ */
+.site-header-row,
+.site-footer,
+.breadcrumbs,
+main {
+  max-width: var(--container-width);
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  /* .block-section(Markdownの`---`区切り)や、commerce固定テンプレートが<main>直下に
+     並べる複数要素(PDPの商品情報/関連商品セクション等)の間の縦間隔。段落・見出しの
+     margin(1rem前後)より明確に大きくし、「セクションの区切り」と分かるようにする。 */
+  gap: 2.5rem;
+  padding-block: 2rem;
+  min-height: 50vh;
+}
+
+/* フォーム要素の既定スタイル(page固有のstyleが無いページ向け) */
+input,
+select,
+textarea,
+button {
+  font: inherit;
+  color: inherit;
+}
+
+input[type='text'],
+input[type='search'],
+input[type='number'],
+select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+button,
+input[type='submit'] {
+  padding: 0.5rem 1.25rem;
+  border: none;
+  border-radius: 4px;
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover,
+input[type='submit']:hover {
+  opacity: 0.9;
+}
+
+/*
+ * Buttons記法: 本文(prose)中に生HTMLで書いた<a class="button ...">を装飾するクラス。
+ * パース層は生HTMLをそのまま通すだけで、Buttons固有の解釈は持たない。
+ */
+.button {
+  display: inline-block;
+  padding: 0.5rem 1.25rem;
+  border-radius: 4px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.button--primary {
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+}
+
+.button--secondary {
+  background: transparent;
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+}
+
+/*
+ * section-metadata: styleキーの値がそのままこのクラス名として
+ * セクションの<section class="block-section ...">に付与される。ここではデモ用に
+ * 「highlight」というクラス名を定義しているだけで、キー・クラス名自体に特別な意味はない。
+ */
+.highlight {
+  padding: 1.5rem;
+  background: #f5f0ff;
+  border-radius: 4px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: var(--color-muted);
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}

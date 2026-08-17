@@ -1,0 +1,38 @@
+---
+// データ表として、rowsをそのままHTMLの<table>に描画する。
+// 位置ベース解釈をしない唯一のBlock: 「見た目上ただのデータ表」を書きたいときに使う。
+import type { Cell } from '../../lib/markdown/parse-page';
+
+export interface Props {
+  name: string;
+  variants: string[];
+  rows: Cell[][];
+}
+
+const { rows } = Astro.props;
+---
+
+<table class="data-table">
+  <tbody>
+    {
+      rows.map((row) => (
+        <tr>
+          {row.map((cell) => (
+            <td set:html={cell.html} />
+          ))}
+        </tr>
+      ))
+    }
+  </tbody>
+</table>
+
+<style>
+  .data-table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  .data-table td {
+    border: 1px solid #ddd;
+    padding: 0.5rem 0.75rem;
+  }
+</style>

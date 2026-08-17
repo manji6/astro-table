@@ -1,0 +1,68 @@
+---
+// Blockライブラリ一覧ページ。カテゴリ別のメニューのみを持ち、各Blockの
+// プレビューは個別ページ(/<locale>/block-library/<name>)に分ける(1ページ1Block、アトミックに保つ)。
+// i18nがOnのプロジェクトでは他の全ページと同じく[locale]配下に置く(ロケール非依存の
+// 特別扱いはしない)。localeごとにexample.<locale>.mdがあればそちらを使う。
+import Base from '../../../layouts/Base.astro';
+import { getBlockLibraryItems } from '../../../lib/block-library';
+
+export async function getStaticPaths() {
+  return ['ja', 'en'].map((locale) => ({ params: { locale } }));
+}
+
+const { locale } = Astro.params;
+const items = await getBlockLibraryItems(locale);
+const categories = [...new Set(items.map((item) => item.category))].sort();
+
+const text =
+  locale === 'ja'
+    ? { title: 'Blockライブラリ', intro: '現在このサイトで使えるBlock一覧です。各Blockをクリックすると、実際の書き方(Markdown)とレンダリング結果を確認できます。' }
+    : { title: 'Block Library', intro: 'Every Block currently available on this site. Click a Block to see how it is written (Markdown) and how it renders.' };
+---
+
+<Base title={text.title} pageType="other" locale={locale} path="block-library" breadcrumbs={[{ label: text.title }]}>
+  <h1>{text.title}</h1>
+  <p>{text.intro}</p>
+
+  <nav class="block-library__menu" aria-label={text.title}>
+    {
+      categories.map((category) => (
+        <div class="block-library__menu-group">
+          <p class="block-library__menu-heading">{category}</p>
+          <ul>
+            {items
+              .filter((item) => item.category === category)
+              .map((item) => (
+                <li>
+                  <a href={`/${locale}/block-library/${item.name}`}>{item.name}</a>
+                </li>
+              ))}
+          </ul>
+        </div>
+      ))
+    }
+  </nav>
+</Base>
+
+<style>
+  .block-library__menu {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    padding: 1rem;
+    border: 1px solid var(--color-border, #ddd);
+    border-radius: 4px;
+  }
+  .block-library__menu-heading {
+    margin: 0 0 0.25rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    color: var(--color-muted, #666);
+  }
+  .block-library__menu ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+</style>

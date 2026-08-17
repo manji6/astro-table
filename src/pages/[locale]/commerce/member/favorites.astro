@@ -1,0 +1,160 @@
+---
+// お気に入り一覧ページ。ログイン中会員のお気に入り商品を一覧表示し、削除できる。
+// member機能がOffのサイトではこのページ自体を生成しない(member.astro/login.astroと同じ
+// On/Offパターン)。
+import Base from '../../../../layouts/Base.astro';
+import siteConfig from '../../../../../site.config';
+
+export async function getStaticPaths() {
+  if (!siteConfig.member.enabled) return [];
+  return ['ja', 'en'].map((locale) => ({ params: { locale } }));
+}
+
+const { locale } = Astro.params;
+const text =
+  locale === 'ja'
+    ? {
+        title: 'お気に入り',
+        mypage: 'マイページ',
+        empty: 'お気に入りに登録された商品はありません。',
+        notLoggedIn: 'お気に入りの表示にはログインが必要です。',
+        loginLink: 'ログインページへ',
+        remove: '削除',
+        browse: '商品を見る',
+      }
+    : {
+        title: 'Favorites',
+        mypage: 'My Page',
+        empty: 'No favorite products yet.',
+        notLoggedIn: 'Please log in to view your favorites.',
+        loginLink: 'Go to login page',
+        remove: 'Remove',
+        browse: 'Browse products',
+      };
+---
+
+<Base
+  title={text.title}
+  pageType="other"
+  locale={locale}
+  path="commerce/member/favorites"
+  breadcrumbs={[{ label: text.mypage, href: `/${locale}/commerce/member` }, { label: text.title }]}
+>
+  <div class="favorites-page" data-locale={locale} data-text={JSON.stringify(text)}>
+    <h1>{text.title}</h1>
+    <div class="favorites-page__not-logged-in" hidden>
+      <p>{text.notLoggedIn}</p>
+      <a href={`/${locale}/login`}>{text.loginLink}</a>
+    </div>
+    <div class="favorites-page__empty" hidden>
+      <p>{text.empty}</p>
+      <a href={`/${locale}/commerce/category`}>{text.browse}</a>
+    </div>
+    <ul class="favorites-page__items"></ul>
+  </div>
+</Base>
+
+<style is:global>
+  /* .favorites-page__itemsの中身はクライアントJSがinnerHTMLで挿入するため、
+     通常のAstroスコープドCSSではなくグローバルスタイルとして定義する(cart.astro等と同じ理由)。 */
+  .favorites-page__items {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1rem;
+  }
+  .favorites-page__items li {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 0.75rem;
+  }
+  .favorites-page__items a {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+  }
+  .favorites-page__items img {
+    width: 100%;
+    height: auto;
+    margin-bottom: 0.5rem;
+  }
+  .favorites-page__remove {
+    margin-top: 0.5rem;
+    width: 100%;
+  }
+</style>
+
+<script>
+  import { getCurrentMemberId } from '../../../../modules/member/lib/member';
+  import { getFavorites, removeFavorite } from '../../../../modules/commerce/lib/favorites';
+
+  interface IndexedProduct {
+    slug: string;
+    title: string;
+    image: string;
+  }
+
+  const root = document.querySelector<HTMLElement>('.favorites-page');
+  if (root) {
+    const locale = root.dataset.locale as string;
+    const text = JSON.parse(root.dataset.text ?? '{}') as Record<string, string>;
+    const notLoggedInEl = root.querySelector<HTMLElement>('.favorites-page__not-logged-in');
+    const emptyEl = root.querySelector<HTMLElement>('.favorites-page__empty');
+    const itemsEl = root.querySelector<HTMLElement>('.favorites-page__items');
+
+    async function render(): Promise<void> {
+      if (!notLoggedInEl || !emptyEl || !itemsEl) return;
+      const memberId = getCurrentMemberId();
+
+      if (!memberId) {
+        notLoggedInEl.hidden = false;
+        emptyEl.hidden = true;
+        itemsEl.innerHTML = '';
+        return;
+      }
+      notLoggedInEl.hidden = true;
+
+      const favorites = getFavorites(memberId);
+      if (favorites.length === 0) {
+        emptyEl.hidden = false;
+        itemsEl.innerHTML = '';
+        return;
+      }
+      emptyEl.hidden = true;
+
+      const products: IndexedProduct[] = await fetch(`/${locale}/commerce/products-index.json`).then((res) =>
+        res.json(),
+      );
+      const favoriteProducts = favorites
+        .map((slug) => products.find((product) => product.slug === slug))
+        .filter((product): product is IndexedProduct => Boolean(product));
+
+      itemsEl.innerHTML = favoriteProducts
+        .map(
+          (product) => `
+            <li data-slug="${product.slug}">
+              <a href="/${locale}/commerce/detail/${product.slug}">
+                <img src="${product.image}" alt="${product.title}" />
+                <span>${product.title}</span>
+              </a>
+              <button type="button" class="favorites-page__remove">${text.remove}</button>
+            </li>`,
+        )
+        .join('');
+
+      itemsEl.querySelectorAll<HTMLButtonElement>('.favorites-page__remove').forEach((button) => {
+        button.addEventListener('click', () => {
+          const slug = button.closest('li')?.dataset.slug;
+          if (slug) removeFavorite(slug);
+        });
+      });
+    }
+
+    window.addEventListener('member:login', render);
+    window.addEventListener('member:logout', render);
+    window.addEventListener('favorites:change', render);
+
+    render();
+  }
+</script>

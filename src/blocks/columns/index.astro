@@ -1,0 +1,31 @@
+---
+// 1行 = 1組のカラムグループ。行内の各セルが1カラムとして横並びになる。
+import type { Cell } from '../../lib/markdown/parse-page';
+
+export interface Props {
+  name: string;
+  variants: string[];
+  rows: Cell[][];
+}
+
+const { rows } = Astro.props;
+---
+
+{
+  rows.map((row) => (
+    <div class="columns">
+      {row.map((cell) => (
+        <div class="columns__col" set:html={cell.html} />
+      ))}
+    </div>
+  ))
+}
+
+<style>
+  .columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin: 1.5rem 0;
+  }
+</style>

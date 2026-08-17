@@ -1,0 +1,57 @@
+---
+// 列の位置ベース解釈: [0]=リンクラベル [1]=リンク先
+import type { Cell } from '../../lib/markdown/parse-page';
+
+export interface Props {
+  name: string;
+  variants: string[];
+  rows: Cell[][];
+}
+
+const { rows } = Astro.props;
+---
+
+<header class="site-header">
+  <a class="site-header__brand" href="/">AstroTable</a>
+  <nav class="site-header__nav" aria-label="メインナビゲーション">
+    <ul>
+      {rows.map((row) => {
+        const [labelCell, hrefCell] = row;
+        return (
+          <li>
+            <a href={hrefCell?.text || '#'}>{labelCell?.text}</a>
+          </li>
+        );
+      })}
+    </ul>
+  </nav>
+</header>
+
+<style>
+  .site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /* 横方向の余白は.site-header-row(Base.astro側の共通コンテナ)が担うので、ここでは縦方向のみ。
+       重複させると.site-header-rowの余白と二重にかかり、他の要素(パンくず・main等)と
+       左右位置がずれる。 */
+    padding-block: 1rem;
+    border-bottom: 1px solid #ddd;
+  }
+  .site-header__brand {
+    font-weight: 700;
+    text-decoration: none;
+    color: inherit;
+  }
+  .site-header__nav ul {
+    display: flex;
+    gap: 1.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .site-header__nav a {
+    text-decoration: none;
+    color: inherit;
+  }
+</style>

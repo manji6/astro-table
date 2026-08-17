@@ -1,0 +1,29 @@
+---
+// 商品のimages配列を受け取り画像ギャラリー表示する。
+export interface Props {
+  images: string[];
+  title: string;
+}
+
+const { images, title } = Astro.props;
+---
+
+<div class="product-gallery">
+  {
+    images.map((src, index) => (
+      <img class="product-gallery__image" src={src} alt={index === 0 ? title : ''} loading={index === 0 ? 'eager' : 'lazy'} />
+    ))
+  }
+</div>
+
+<style>
+  .product-gallery {
+    display: grid;
+    gap: 0.5rem;
+  }
+  .product-gallery__image {
+    width: 100%;
+    height: auto;
+    border-radius: 4px;
+  }
+</style>

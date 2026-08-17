@@ -1,0 +1,55 @@
+---
+// YouTube/Vimeo等の外部コンテンツ埋め込み表示Block。
+// 1列1行でURLを貼るだけの最小形式。URLパターン判定はsrc/lib/embed-url.tsに切り出してあり、
+// video Blockと共有する。
+import type { Cell } from '../../lib/markdown/parse-page';
+import { parseEmbedUrl } from '../../lib/embed-url';
+
+export interface Props {
+  name: string;
+  variants: string[];
+  rows: Cell[][];
+}
+
+const { rows } = Astro.props;
+const urlCell = rows[0]?.[0];
+const url = urlCell?.links[0]?.href ?? urlCell?.text ?? '';
+const info = parseEmbedUrl(url);
+---
+
+{
+  info ? (
+    <div class="embed" data-provider={info.provider}>
+      <iframe
+        src={info.embedUrl}
+        title="Embedded content"
+        loading="lazy"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen
+      />
+    </div>
+  ) : (
+    <p class="embed embed--unsupported">
+      対応していないURLです: <a href={url}>{url}</a>
+    </p>
+  )
+}
+
+<style>
+  .embed {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    max-width: 100%;
+  }
+  .embed iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+  .embed--unsupported {
+    aspect-ratio: auto;
+    color: var(--color-muted, #666);
+  }
+</style>

@@ -1,0 +1,77 @@
+---
+// 動画再生Block。自前ホスト(<video>タグ)と外部埋め込み(YouTube/Vimeo)の
+// 両方に対応する。外部URLの判定はembed Blockと共有のsrc/lib/embed-url.tsで行う。
+// 2列key-value形式(1列目=キー、2列目=値)。対応キー: src(必須)、poster(省略可)。
+// variant記法: autoplay, loop
+import type { Cell } from '../../lib/markdown/parse-page';
+import { parseEmbedUrl } from '../../lib/embed-url';
+
+export interface Props {
+  name: string;
+  variants: string[];
+  rows: Cell[][];
+}
+
+const { rows, variants } = Astro.props;
+
+const config: Record<string, Cell> = {};
+for (const row of rows) {
+  const [keyCell, valueCell] = row;
+  if (keyCell && valueCell) {
+    config[keyCell.text.trim().toLowerCase()] = valueCell;
+  }
+}
+
+const srcCell = config.src;
+const srcUrl = srcCell?.links[0]?.href ?? srcCell?.text ?? '';
+const posterUrl = config.poster?.images[0]?.src ?? config.poster?.text;
+const embedInfo = parseEmbedUrl(srcUrl);
+
+const autoplay = variants.includes('autoplay');
+const loop = variants.includes('loop');
+---
+
+{
+  embedInfo ? (
+    <div class="video video--embed" data-provider={embedInfo.provider}>
+      <iframe
+        src={embedInfo.embedUrl}
+        title="Video"
+        loading="lazy"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen
+      />
+    </div>
+  ) : (
+    <video
+      class="video"
+      src={srcUrl}
+      poster={posterUrl}
+      controls
+      autoplay={autoplay}
+      loop={loop}
+      muted={autoplay}
+      playsinline
+    />
+  )
+}
+
+<style>
+  .video {
+    max-width: 100%;
+  }
+  .video--embed {
+    position: relative;
+    aspect-ratio: 16 / 9;
+  }
+  .video--embed iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+  video.video {
+    width: 100%;
+  }
+</style>

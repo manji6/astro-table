@@ -1,0 +1,12 @@
+sku: WKDY-SHU-001
+images:
+  - /images/products/commute-running-shoes.png
+categories: [shoes]
+tags: [running, commute]
+stock: in_stock
+prices:
+  ja-JP: { currency: JPY, amount: 18000 }
+  en-US: { currency: USD, amount: 129.99 }
+translations:
+  ja-JP: { title: "コミュートランニングシューズ", description: "通勤ラン需要に応える軽量設計。かかと部にリフレクター素材を使用し夜間の視認性を高めています。" }
+  en-US: { title: "Commute Running Shoes", description: "Lightweight shoes built for the run-commute. The heel uses a reflective material for better visibility at night." }

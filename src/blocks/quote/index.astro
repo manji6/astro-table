@@ -1,0 +1,44 @@
+---
+// 引用文・お客様の声(レビュー抜粋)・プルクオート表示Block。
+// 列の位置ベース解釈: [0]=引用本文 [1]=出典/著者名(省略可)。1行のみ想定。
+// variant記法(例: `quote (large)`)で見た目のバリエーション(文字サイズ)に対応する。
+import type { Cell } from '../../lib/markdown/parse-page';
+
+export interface Props {
+  name: string;
+  variants: string[];
+  rows: Cell[][];
+}
+
+const { rows, variants } = Astro.props;
+const [bodyCell, citeCell] = rows[0] ?? [];
+const body = bodyCell?.text;
+const cite = citeCell?.text;
+---
+
+<figure class="quote" data-variants={variants.join(' ')}>
+  <blockquote class="quote__body">{body}</blockquote>
+  {cite && <figcaption class="quote__cite">— {cite}</figcaption>}
+</figure>
+
+<style>
+  .quote {
+    margin: 0;
+    padding: 1rem 1.5rem;
+    border-left: 4px solid currentColor;
+  }
+  .quote__body {
+    margin: 0;
+    font-size: 1.125rem;
+    font-style: italic;
+  }
+  .quote__cite {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: #555;
+  }
+  /* variant記法によるサイズバリエーション。data-variants属性の値を属性セレクタで判定する。 */
+  .quote[data-variants~='large'] .quote__body {
+    font-size: 1.75rem;
+  }
+</style>
