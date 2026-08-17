@@ -43,6 +43,14 @@ git merge upstream/main   # または git rebase upstream/main
 
 コア部分(`/src/blocks`, `/src/lib`, `/src/components`, `/src/layouts`等)とサイト固有部分(`/content`のコンテンツ・commerceモジュール)のファイルパスが分離されているため、upstreamの変更がコア部分のみに閉じていればコンフリクトはほぼ発生しない。
 
+**注意: 初回のマージは`fatal: refusing to merge unrelated histories`で失敗する。** 「Use this template」で作成したリポジトリは、forkと違って単一の初期コミットしか持たず、AstroTable本体とは共通の祖先コミットを持たないため。初回のみ`--allow-unrelated-histories`を付けて実行する。
+
+```bash
+git merge upstream/main --allow-unrelated-histories
+```
+
+このマージコミット以降は両者の履歴がつながるため、2回目以降は通常の`git merge upstream/main`(フラグなし)で問題ない。
+
 ## Cloudflare Pagesへのデプロイ
 
 デプロイはCloudflare Pagesのネイティブ Git 連携を使う。以下はCloudflareダッシュボード側で行うユーザー作業。
