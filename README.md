@@ -51,16 +51,28 @@ git merge upstream/main --allow-unrelated-histories
 
 このマージコミット以降は両者の履歴がつながるため、2回目以降は通常の`git merge upstream/main`(フラグなし)で問題ない。
 
-## Cloudflare Pagesへのデプロイ
+## Cloudflare Workersへのデプロイ
 
-デプロイはCloudflare Pagesのネイティブ Git 連携を使う。以下はCloudflareダッシュボード側で行うユーザー作業。
+Cloudflareは2025年にPages(静的サイト専用ホスティング)を非推奨化し、Workers(静的アセット配信機能付き)を新規プロジェクトの標準としている。本リポジトリはWorkers向けの`wrangler.jsonc`を同梱済みで、SSR用のWorkerコードは持たない純粋な静的アセット配信構成になっている。
 
-1. Cloudflareダッシュボードで本リポジトリを連携する
-2. ビルド設定:
+### Git連携でのデプロイ(推奨)
+
+1. Cloudflareダッシュボードの「Compute (Workers)」から本リポジトリを連携する
+2. `wrangler.jsonc`が自動検出される。ビルド設定は以下を指定する:
    - ビルドコマンド: `npm run build`
-   - 出力ディレクトリ: `dist`
-3. 環境変数(必要に応じて): `PUBLIC_TAG_ENV`(`site.config.ts`のタグ注入設定を本番/プレビューで出し分ける場合に使用)
-4. `main`ブランチへのマージで本番デプロイ、PR作成でプレビューURLが自動発行される
+   - デプロイコマンド: `npx wrangler deploy`(出力ディレクトリは`wrangler.jsonc`の`assets.directory`で指定済みのため、ダッシュボード側で個別に指定する項目はない)
+3. `wrangler.jsonc`の`name`をCloudflare側のWorkerプロジェクト名と一致させる(「Use this template」でサイトを作った場合は書き換えが必要)
+4. 環境変数(必要に応じて): `PUBLIC_TAG_ENV`(`site.config.ts`のタグ注入設定を本番/プレビューで出し分ける場合に使用)
+5. `main`ブランチへのマージで本番デプロイ、PR作成でプレビューURLが自動発行される
+
+### ローカルからの手動デプロイ
+
+```bash
+npm run build
+npx wrangler deploy
+```
+
+初回は`npx wrangler login`でCloudflareアカウントの認証が必要。
 
 品質ゲート(lint/typecheck/unit/build/e2e)はGitHub Actions(`.github/workflows/ci.yml`)側で独立して実行される。mainブランチの保護ルール(必須ステータスチェック化)はGitHub側の設定作業として別途行うこと。
 

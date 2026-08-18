@@ -23,6 +23,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "deploy": "wrangler deploy",
     "astro": "astro",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -52,6 +53,7 @@
     "globals": "^17.7.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.65.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "wrangler": "^4.123.0"
   }
 }

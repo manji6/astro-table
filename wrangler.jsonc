@@ -1,0 +1,9 @@
+{
+  // "name" はCloudflareダッシュボード上のWorkerプロジェクト名と一致させる。
+  // 「Use this template」でサイト実体を作った場合は、サイトごとに書き換えること。
+  "name": "astro-table",
+  "compatibility_date": "2026-08-18",
+  "assets": {
+    "directory": "./dist"
+  }
+}
