@@ -33,6 +33,86 @@ test('accordion toggle pushes an ACDL event via pushEvent (pattern B)', async ({
   });
 });
 
+// ACDL初期化(Base.astro)が"page loaded"というevent Objectとしてpushしていることを検証する
+// (ACDL公式wiki記載の規約。eventキーが無いと単なる状態マージになりイベントが発火しない)。
+test('page load pushes a "page loaded" ACDL event', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.adobeDataLayer = window.adobeDataLayer || [];
+    (window as unknown as { __acdlEvents: unknown[] }).__acdlEvents = [];
+    window.adobeDataLayer.push(((dataLayer: {
+      addEventListener: (event: string, handler: (e: unknown) => void) => void;
+    }) => {
+      dataLayer.addEventListener('adobeDataLayer:change', (event) => {
+        (window as unknown as { __acdlEvents: unknown[] }).__acdlEvents.push(event);
+      });
+    }) as unknown as Record<string, unknown>);
+  });
+
+  await page.goto('/ja/sample-blocks');
+
+  const events = await page.evaluate(() => (window as unknown as { __acdlEvents: Array<Record<string, unknown>> }).__acdlEvents);
+  const pageLoadedEvent = events.find((event) => event.event === 'page loaded');
+
+  expect(pageLoadedEvent).toMatchObject({ event: 'page loaded' });
+});
+
+// modalの開閉(トリガークリック・ネイティブcloseイベント)でACDLパターンB(pushEvent)の
+// イベントがpushされることを検証する。
+test('modal open/close pushes ACDL events via pushEvent (pattern B)', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.adobeDataLayer = window.adobeDataLayer || [];
+    (window as unknown as { __acdlEvents: unknown[] }).__acdlEvents = [];
+    window.adobeDataLayer.push(((dataLayer: {
+      addEventListener: (event: string, handler: (e: unknown) => void) => void;
+    }) => {
+      dataLayer.addEventListener('adobeDataLayer:change', (event) => {
+        (window as unknown as { __acdlEvents: unknown[] }).__acdlEvents.push(event);
+      });
+    }) as unknown as Record<string, unknown>);
+  });
+
+  await page.goto('/ja/sample-blocks');
+
+  const dialog = page.locator('dialog.modal');
+  await page.locator('.modal__trigger', { hasText: 'サイズ表を見る' }).click();
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).not.toBeVisible();
+
+  const events = await page.evaluate(() => (window as unknown as { __acdlEvents: Array<Record<string, unknown>> }).__acdlEvents);
+  const openEvent = events.find((event) => event.event === 'modal_toggle' && event.state === 'open');
+  const closeEvent = events.find((event) => event.event === 'modal_toggle' && event.state === 'closed');
+
+  expect(openEvent).toMatchObject({ event: 'modal_toggle', blockName: 'modal', state: 'open' });
+  expect(closeEvent).toMatchObject({ event: 'modal_toggle', blockName: 'modal', state: 'closed' });
+});
+
+// tabsの切り替えでACDLパターンB(pushEvent)のイベントがpushされることを検証する。
+test('tabs switch pushes an ACDL event via pushEvent (pattern B)', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.adobeDataLayer = window.adobeDataLayer || [];
+    (window as unknown as { __acdlEvents: unknown[] }).__acdlEvents = [];
+    window.adobeDataLayer.push(((dataLayer: {
+      addEventListener: (event: string, handler: (e: unknown) => void) => void;
+    }) => {
+      dataLayer.addEventListener('adobeDataLayer:change', (event) => {
+        (window as unknown as { __acdlEvents: unknown[] }).__acdlEvents.push(event);
+      });
+    }) as unknown as Record<string, unknown>);
+  });
+
+  await page.goto('/ja/sample-blocks');
+
+  const tabs = page.locator('.tabs').first();
+  const secondTabLabel = await tabs.locator('.tabs__tab').nth(1).textContent();
+  await tabs.locator('.tabs__tab').nth(1).click();
+
+  const events = await page.evaluate(() => (window as unknown as { __acdlEvents: Array<Record<string, unknown>> }).__acdlEvents);
+  const switchEvent = events.find((event) => event.event === 'tabs_switch');
+
+  expect(switchEvent).toMatchObject({ event: 'tabs_switch', blockName: 'tabs', label: secondTabLabel?.trim() });
+});
+
 test('header/footer render nav links and cards/hero/table content on the sample page', async ({ page }) => {
   await page.goto('/ja/sample-blocks');
 

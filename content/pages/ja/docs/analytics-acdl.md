@@ -15,7 +15,7 @@ pageType: "other"
 ```html
 <script is:inline define:vars={{ pageContext }}>
   window.adobeDataLayer = window.adobeDataLayer || [];
-  window.adobeDataLayer.push({ page: pageContext });
+  window.adobeDataLayer.push({ event: 'page loaded', page: pageContext });
 </script>
 <script>
   import '@adobe/adobe-client-data-layer/dist/adobe-client-data-layer.min.js';
@@ -24,10 +24,11 @@ pageType: "other"
 
 `window.adobeDataLayer`を配列として先に初期化し、そこに`page`コンテキストをpushしてから、ACDL本体を読み込みます。ACDL本体は既存の配列を検知して、`push`/`getState`/`addEventListener`を持つ本来のオブジェクトに拡張します(公式推奨の初期化パターンです)。
 
-`pageContext`はページのfrontmatter(`title`/`pageType`)から供給されます。`event`キーを持たないpushは「状態」としてマージされ、履歴には残りません。
+`pageContext`はページのfrontmatter(`title`/`pageType`)から供給されます。[ACDL公式wiki](https://github.com/adobe/adobe-client-data-layer/wiki)記載の`"event": "page loaded"`規約に沿い、`event`キーを含めた正式なEvent Objectとしてpushします。同じpush内に含めた`page`キーは、通常のData Objectと同様に状態へマージされます(`event`/`eventInfo`自体は履歴にもstateにも残りません)。
 
 ```js
 window.adobeDataLayer.push({
+  event: 'page loaded',
   page: {
     pageName: string,
     pageType: string,   // "top" | "product" | "cart" | ... (frontmatterのpageTypeと同じenum)
@@ -64,6 +65,8 @@ export function pushEvent(eventName: string, payload: Record<string, unknown> = 
   });
 </script>
 ```
+
+現時点でこのパターンを使っているBlockは`accordion`(`accordion_toggle`)、`modal`(`modal_toggle`。トリガークリックで`open`、ネイティブの`close`イベントで`closed`。閉じるボタン・背景クリック・ESCキーいずれの経路でも`close`イベントは一律で発火するため、経路ごとに個別のpushEventは不要)、`tabs`(`tabs_switch`。タブ切り替えのたびに発火)です。
 
 イベント名の強制フォーマットはありませんが、`<blockname>_<action>`(例: `accordion_toggle`)を推奨します。新しいBlockを追加するたびに中央側を修正する必要がなく、「ディレクトリを1つ足すだけ」というBlockの設計思想と整合します。
 
