@@ -16,6 +16,7 @@ const text =
     ? {
         title: '会員発行',
         idLabel: '会員ID',
+        emailLabel: 'メールアドレス',
         addAttribute: '属性を追加',
         keyPlaceholder: 'キー',
         valuePlaceholder: '値',
@@ -33,6 +34,7 @@ const text =
     : {
         title: 'Member Issuance',
         idLabel: 'Member ID',
+        emailLabel: 'Email address',
         addAttribute: 'Add attribute',
         keyPlaceholder: 'Key',
         valuePlaceholder: 'Value',
@@ -57,6 +59,10 @@ const text =
       <label>
         {text.idLabel}
         <input type="text" class="member-page__id" required />
+      </label>
+      <label>
+        {text.emailLabel}
+        <input type="email" class="member-page__email" required />
       </label>
       <div class="member-page__attributes"></div>
       <button type="button" class="member-page__add-attribute">{text.addAttribute}</button>
@@ -123,6 +129,7 @@ const text =
 
     const form = root.querySelector<HTMLFormElement>('.member-page__form');
     const idInput = root.querySelector<HTMLInputElement>('.member-page__id');
+    const emailInput = root.querySelector<HTMLInputElement>('.member-page__email');
     const attributesEl = root.querySelector<HTMLElement>('.member-page__attributes');
     const addAttributeButton = root.querySelector<HTMLButtonElement>('.member-page__add-attribute');
     const messageEl = root.querySelector<HTMLElement>('.member-page__message');
@@ -155,8 +162,9 @@ const text =
     }
 
     function loadIntoForm(member: Member): void {
-      if (!idInput || !attributesEl) return;
+      if (!idInput || !emailInput || !attributesEl) return;
       idInput.value = member.id;
+      emailInput.value = member.email;
       attributesEl.innerHTML = '';
       const entries = Object.entries(member.attributes);
       if (entries.length === 0) addAttributeRow();
@@ -174,7 +182,7 @@ const text =
             .join(', ');
           return `
             <li data-id="${member.id}">
-              <span class="member-page__member-summary"><strong>${member.id}</strong>${summary ? ` (${summary})` : ''}</span>
+              <span class="member-page__member-summary"><strong>${member.id}</strong> &lt;${member.email}&gt;${summary ? ` (${summary})` : ''}</span>
               <button type="button" class="member-page__edit">${text.edit}</button>
               <button type="button" class="member-page__login">${text.login}</button>
               <button type="button" class="member-page__delete">${text.remove}</button>
@@ -194,10 +202,10 @@ const text =
 
     form?.addEventListener('submit', (event) => {
       event.preventDefault();
-      if (!idInput || !messageEl) return;
+      if (!idInput || !emailInput || !messageEl) return;
       const id = idInput.value;
       const isNew = !listMembers().some((m) => m.id === id.trim());
-      saveMember(id, readAttributes());
+      saveMember(id, emailInput.value, readAttributes());
       messageEl.textContent = isNew ? text.savedNew : text.savedUpdate;
       renderMembers();
     });

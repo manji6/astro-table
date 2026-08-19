@@ -19,7 +19,7 @@ describe('favorites.ts / 未ログイン時の拒否', () => {
 
 describe('favorites.ts / ログイン中会員のCRUD', () => {
   beforeEach(() => {
-    saveMember('member-001', {});
+    saveMember('member-001', 'member-001@example.com', {});
     login('member-001');
   });
 
@@ -54,7 +54,7 @@ describe('favorites.ts / ログイン中会員のCRUD', () => {
 
   it('keeps favorites separate per member', () => {
     addFavorite('running-shoes');
-    saveMember('member-002', {});
+    saveMember('member-002', 'member-002@example.com', {});
     login('member-002');
     addFavorite('canvas-tote');
 
@@ -71,7 +71,7 @@ describe('favorites.ts / ログイン中会員のCRUD', () => {
 
 describe('favorites.ts / favorites:changeイベント', () => {
   beforeEach(() => {
-    saveMember('member-001', {});
+    saveMember('member-001', 'member-001@example.com', {});
     login('member-001');
   });
 

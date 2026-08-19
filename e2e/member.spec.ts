@@ -12,6 +12,7 @@ test.beforeEach(async ({ page }) => {
 test('creates a new member with attributes and lists it', async ({ page }) => {
   // フォームには起動時から空の属性行が1つ用意されているので、追加クリックは不要。
   await page.locator('.member-page__id').fill('member-001');
+  await page.locator('.member-page__email').fill('member-001@example.com');
   await page.locator('.member-page__attr-key').fill('plan');
   await page.locator('.member-page__attr-value').fill('gold');
   await page.locator('.member-page__save').click();
@@ -25,12 +26,14 @@ test('creates a new member with attributes and lists it', async ({ page }) => {
 test('editing an existing member loads its attributes back into the form', async ({ page }) => {
   // フォームには起動時から空の属性行が1つ用意されているので、追加クリックは不要。
   await page.locator('.member-page__id').fill('member-001');
+  await page.locator('.member-page__email').fill('member-001@example.com');
   await page.locator('.member-page__attr-key').fill('plan');
   await page.locator('.member-page__attr-value').fill('gold');
   await page.locator('.member-page__save').click();
 
   await page.locator('.member-page__members li[data-id="member-001"] .member-page__edit').click();
   await expect(page.locator('.member-page__id')).toHaveValue('member-001');
+  await expect(page.locator('.member-page__email')).toHaveValue('member-001@example.com');
   await expect(page.locator('.member-page__attr-value')).toHaveValue('gold');
 
   await page.locator('.member-page__attr-value').fill('platinum');
@@ -41,6 +44,7 @@ test('editing an existing member loads its attributes back into the form', async
 
 test('deletes a member from the list', async ({ page }) => {
   await page.locator('.member-page__id').fill('member-001');
+  await page.locator('.member-page__email').fill('member-001@example.com');
   await page.locator('.member-page__save').click();
   await expect(page.locator('.member-page__members li[data-id="member-001"]')).toBeVisible();
 
@@ -55,6 +59,7 @@ test('deletes a member from the list', async ({ page }) => {
 test('export downloads the roster as JSON and import restores it', async ({ page }) => {
   // フォームには起動時から空の属性行が1つ用意されているので、追加クリックは不要。
   await page.locator('.member-page__id').fill('member-001');
+  await page.locator('.member-page__email').fill('member-001@example.com');
   await page.locator('.member-page__attr-key').fill('plan');
   await page.locator('.member-page__attr-value').fill('gold');
   await page.locator('.member-page__save').click();

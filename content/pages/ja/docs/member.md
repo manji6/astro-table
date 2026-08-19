@@ -44,6 +44,7 @@ commerceモジュールとは完全に独立しており、memberモジュール
 ```ts
 type Member = {
   id: string;
+  email: string;
   attributes: Record<string, string>;
   createdAt: string;
   updatedAt: string;
@@ -51,7 +52,7 @@ type Member = {
 
 listMembers(): Member[]
 getMember(id: string): Member | undefined
-saveMember(id: string, attributes: Record<string, string>): Member  // 既存IDなら更新、新規なら作成
+saveMember(id: string, email: string, attributes: Record<string, string>): Member  // 既存IDなら更新、新規なら作成
 deleteMember(id: string): void
 
 getCurrentMemberId(): string | null
@@ -63,7 +64,9 @@ exportMembers(): string             // 名簿をJSON文字列として書き出�
 importMembers(json: string): Member[]  // JSON文字列から名簿を一括インポート
 ```
 
-会員は「ID」と自由な「属性(key-value)」だけを持つ、シンプルなレコードです。属性の内容に制約はなく、パーソナライゼーション検証用の任意項目(会員ランク、居住地域など)を自由に設定できます。
+会員は「ID」「メールアドレス」「自由な属性(key-value)」を持つレコードです。マーケティングツール検証(メール配信条件・パーソナライゼーションなど)ではメールアドレスが必須になる場面が多いため、`email`は`id`と並ぶ第一級のフィールドとして必須にしています。`saveMember`はメールアドレスが妥当な形式(`◯◯@◯◯.◯◯`相当)でなければ例外を投げ、保存しません。`importMembers`でも各レコードに妥当な`email`が無ければ同様に例外を投げます。
+
+属性(`attributes`)の内容には制約がなく、パーソナライゼーション検証用の任意項目(会員ランク、居住地域など)を自由に設定できます。
 
 操作のたびに`member:change` / `member:login` / `member:logout`のいずれかの`CustomEvent`が`window`に発火します。他タブでの変更は`storage`イベント経由で検知し、同じイベントとして再発火されるため、複数タブを開いた状態でもログイン状態が同期します。
 
@@ -71,7 +74,7 @@ importMembers(json: string): Member[]  // JSON文字列から名簿を一括イ�
 
 任意の会員IDと属性を作成・更新できるページです。実運用でいう「管理画面での会員登録」に相当する検証用UIで、認証は伴いません。
 
-- 会員IDと、複数の属性(キーと値のペア)を入力してフォームから保存
+- 会員ID・メールアドレス(必須)・複数の属性(キーと値のペア)を入力してフォームから保存
 - 発行済み会員の一覧表示、編集、削除
 - 一覧の各行から直接ログインできる「ログインする」ボタン(押すと`/login`へ遷移し、ログイン済みの状態になっている)
 - 名簿全体をJSONとしてエクスポート/インポート(検証環境の再現や共有に利用)
@@ -101,13 +104,17 @@ importMembers(json: string): Member[]  // JSON文字列から名簿を一括イ�
 
 ```ts
 // ログイン時
-window.adobeDataLayer.push({ user: { id: member.id, ...member.attributes } });
+window.adobeDataLayer.push({
+  user: { id: member.id, ...member.attributes, email: member.email, emailSha256: '...' },
+});
 
 // ログアウト時
 window.adobeDataLayer.push({ user: null });
 ```
 
-会員の属性(`attributes`)はそのまま`user`オブジェクトへ展開されます。会員発行ページで自由に設定した属性(会員ランクなど)を、そのままACDL経由でタグマネージャー側のパーソナライゼーション条件に使う、という検証がそのまま行えます。
+`email`は必須フィールドなので、ログイン中は常に`user.email`が入った状態でACDLへpushされます。会員発行ページで自由に設定した属性(会員ランクなど)も`attributes`としてそのまま`user`オブジェクトへ展開されるため、そのままACDL経由でタグマネージャー側のメール配信条件・パーソナライゼーション条件に使う、という検証がそのまま行えます。
+
+生のメールアドレスをそのまま受け付けられない連携先(ハッシュ化済みの値しか扱わない広告/計測プラットフォーム等)向けに、`emailSha256`(前後の空白除去・小文字化してからのSHA-256ハッシュ値、16進数文字列)も併せてpushされます。正規化してからハッシュ化しているため、大文字小文字や前後の空白の違いでハッシュ値が変わることはありません。
 
 この`acdl-bridge.ts`は`MemberOverlay.astro`の`<script>`から読み込まれています。オーバーレイ自体が`member.enabled`時に全ページへ差し込まれるコンポーネントなので、ログイン/ログアウトが会員発行ページ・ログインページ・オーバーレイ自身のどこで起きても、確実にACDLへ届きます。
 

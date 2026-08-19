@@ -44,6 +44,7 @@ The member module is fully independent of commerce — it has zero dependency on
 ```ts
 type Member = {
   id: string;
+  email: string;
   attributes: Record<string, string>;
   createdAt: string;
   updatedAt: string;
@@ -51,7 +52,7 @@ type Member = {
 
 listMembers(): Member[]
 getMember(id: string): Member | undefined
-saveMember(id: string, attributes: Record<string, string>): Member  // updates if the id exists, creates otherwise
+saveMember(id: string, email: string, attributes: Record<string, string>): Member  // updates if the id exists, creates otherwise
 deleteMember(id: string): void
 
 getCurrentMemberId(): string | null
@@ -63,7 +64,9 @@ exportMembers(): string             // serializes the roster to a JSON string
 importMembers(json: string): Member[]  // bulk-imports a roster from a JSON string
 ```
 
-A member is a simple record: just an ID and a free-form set of attributes (key-value pairs). Nothing constrains the attribute values, so you can set arbitrary fields for personalization testing — a membership tier, a region, whatever you need.
+A member is a record with an ID, an email address, and a free-form set of attributes (key-value pairs). Marketing-tool verification (email-based segmentation, personalization conditions, and so on) very often needs a real email address, so `email` is a required, first-class field alongside `id`. `saveMember` throws if the email isn't in a valid format (roughly `foo@bar.baz`) and won't save. `importMembers` enforces the same rule for every imported record.
+
+Nothing constrains the attribute values, so you can set arbitrary fields for personalization testing — a membership tier, a region, whatever you need.
 
 Every mutation dispatches one of `member:change`, `member:login`, or `member:logout` as a `CustomEvent` on `window`. Changes made in another tab are picked up via the `storage` event and re-dispatched as the same events, so login state stays in sync across open tabs.
 
@@ -71,7 +74,7 @@ Every mutation dispatches one of `member:change`, `member:login`, or `member:log
 
 A page for creating and updating arbitrary member IDs and attributes. Think of it as a verification-only stand-in for "registering a member in an admin panel" — there's no authentication involved.
 
-- A form to enter a member ID and any number of attribute key/value pairs, then save
+- A form to enter a member ID, a required email address, and any number of attribute key/value pairs, then save
 - A list of issued members with edit and delete controls
 - A "log in" button on each row that logs in as that member directly and navigates to `/login`
 - Export/import of the whole roster as JSON, useful for reproducing or sharing a test setup
@@ -101,13 +104,17 @@ Favorites itself is a `commerce`-module feature, but since it's tied to the logg
 
 ```ts
 // On login
-window.adobeDataLayer.push({ user: { id: member.id, ...member.attributes } });
+window.adobeDataLayer.push({
+  user: { id: member.id, ...member.attributes, email: member.email, emailSha256: '...' },
+});
 
 // On logout
 window.adobeDataLayer.push({ user: null });
 ```
 
-The member's `attributes` are spread directly into the `user` object. Whatever attributes you set freely on the member issuance page (a membership tier, say) flow straight through to ACDL, so you can test tag-manager personalization rules against them as-is.
+Since `email` is a required field, `user.email` is always present in the push while someone is logged in. The member's `attributes` are also spread directly into the `user` object, so whatever attributes you set freely on the member issuance page (a membership tier, say) flow straight through to ACDL, letting you test tag-manager email-segmentation and personalization rules against them as-is.
+
+For downstream integrations that can't accept a raw email address (some ad/measurement platforms only accept hashed values), `emailSha256` is also pushed — a SHA-256 hex digest of the email after trimming whitespace and lowercasing it. Normalizing before hashing means the digest doesn't change just because of case or surrounding whitespace differences.
 
 `acdl-bridge.ts` is loaded from `MemberOverlay.astro`'s `<script>`. Since the overlay itself is injected on every page when `member.enabled` is true, login/logout events reach ACDL reliably no matter where they originate — the member issuance page, the login page, or the overlay itself.
 

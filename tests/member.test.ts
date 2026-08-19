@@ -12,6 +12,8 @@ import {
   saveMember,
 } from '../src/modules/member/lib/member';
 
+const EMAIL = 'member-001@example.com';
+
 beforeEach(() => {
   localStorage.clear();
 });
@@ -21,38 +23,48 @@ describe('member.ts / 会員データのCRUD', () => {
     expect(listMembers()).toEqual([]);
   });
 
-  it('saveMember creates a new member with the given attributes', () => {
-    const member = saveMember('member-001', { plan: 'gold' });
-    expect(member).toMatchObject({ id: 'member-001', attributes: { plan: 'gold' } });
+  it('saveMember creates a new member with the given email and attributes', () => {
+    const member = saveMember('member-001', EMAIL, { plan: 'gold' });
+    expect(member).toMatchObject({ id: 'member-001', email: EMAIL, attributes: { plan: 'gold' } });
     expect(listMembers()).toHaveLength(1);
   });
 
   it('saveMember updates an existing member instead of creating a duplicate', () => {
-    saveMember('member-001', { plan: 'gold' });
-    const updated = saveMember('member-001', { plan: 'platinum' });
+    saveMember('member-001', EMAIL, { plan: 'gold' });
+    const updated = saveMember('member-001', EMAIL, { plan: 'platinum' });
     expect(updated.attributes).toEqual({ plan: 'platinum' });
     expect(listMembers()).toHaveLength(1);
   });
 
   it('getMember returns the matching member or undefined', () => {
-    saveMember('member-001', { plan: 'gold' });
+    saveMember('member-001', EMAIL, { plan: 'gold' });
     expect(getMember('member-001')).toMatchObject({ id: 'member-001' });
     expect(getMember('unknown')).toBeUndefined();
   });
 
   it('deleteMember removes the member by id', () => {
-    saveMember('member-001', { plan: 'gold' });
+    saveMember('member-001', EMAIL, { plan: 'gold' });
     deleteMember('member-001');
     expect(listMembers()).toHaveLength(0);
   });
 
   it('trims whitespace from the id', () => {
-    saveMember('  member-001  ', { plan: 'gold' });
+    saveMember('  member-001  ', EMAIL, { plan: 'gold' });
     expect(getMember('member-001')).toBeDefined();
   });
 
   it('throws when saving an empty id', () => {
-    expect(() => saveMember('   ', {})).toThrow();
+    expect(() => saveMember('   ', EMAIL, {})).toThrow();
+  });
+
+  it('throws when saving without a valid email', () => {
+    expect(() => saveMember('member-001', '', {})).toThrow();
+    expect(() => saveMember('member-001', 'not-an-email', {})).toThrow();
+  });
+
+  it('trims whitespace from the email', () => {
+    const member = saveMember('member-001', `  ${EMAIL}  `, {});
+    expect(member.email).toBe(EMAIL);
   });
 });
 
@@ -63,7 +75,7 @@ describe('member.ts / ログイン・ログアウト', () => {
   });
 
   it('login succeeds for a registered member id and persists the session', () => {
-    saveMember('member-001', { plan: 'gold' });
+    saveMember('member-001', EMAIL, { plan: 'gold' });
     const member = login('member-001');
     expect(member).toMatchObject({ id: 'member-001' });
     expect(getCurrentMemberId()).toBe('member-001');
@@ -77,14 +89,14 @@ describe('member.ts / ログイン・ログアウト', () => {
   });
 
   it('logout clears the current session', () => {
-    saveMember('member-001', {});
+    saveMember('member-001', EMAIL, {});
     login('member-001');
     logout();
     expect(getCurrentMemberId()).toBeNull();
   });
 
   it('deleting the currently logged-in member also logs them out', () => {
-    saveMember('member-001', {});
+    saveMember('member-001', EMAIL, {});
     login('member-001');
     deleteMember('member-001');
     expect(getCurrentMemberId()).toBeNull();
@@ -93,30 +105,38 @@ describe('member.ts / ログイン・ログアウト', () => {
 
 describe('member.ts / Export・Import', () => {
   it('exportMembers serializes the full roster as JSON', () => {
-    saveMember('member-001', { plan: 'gold' });
-    saveMember('member-002', { plan: 'silver' });
+    saveMember('member-001', EMAIL, { plan: 'gold' });
+    saveMember('member-002', 'member-002@example.com', { plan: 'silver' });
     const json = JSON.parse(exportMembers());
     expect(json).toHaveLength(2);
   });
 
   it('importMembers replaces the roster with the imported data', () => {
-    saveMember('member-999', {});
-    const json = JSON.stringify([{ id: 'member-001', attributes: { plan: 'gold' } }]);
+    saveMember('member-999', EMAIL, {});
+    const json = JSON.stringify([{ id: 'member-001', email: EMAIL, attributes: { plan: 'gold' } }]);
     importMembers(json);
     expect(listMembers().map((m) => m.id)).toEqual(['member-001']);
   });
 
   it('round-trips through export/import', () => {
-    saveMember('member-001', { plan: 'gold', region: 'jp' });
+    saveMember('member-001', EMAIL, { plan: 'gold', region: 'jp' });
     const json = exportMembers();
     localStorage.clear();
     importMembers(json);
-    expect(getMember('member-001')).toMatchObject({ attributes: { plan: 'gold', region: 'jp' } });
+    expect(getMember('member-001')).toMatchObject({ email: EMAIL, attributes: { plan: 'gold', region: 'jp' } });
   });
 
   it('throws on malformed import data', () => {
     expect(() => importMembers('not json')).toThrow();
     expect(() => importMembers('{}')).toThrow();
+  });
+
+  it('throws when an imported member is missing a valid email', () => {
+    const json = JSON.stringify([{ id: 'member-001', attributes: {} }]);
+    expect(() => importMembers(json)).toThrow();
+
+    const invalidEmailJson = JSON.stringify([{ id: 'member-001', email: 'not-an-email', attributes: {} }]);
+    expect(() => importMembers(invalidEmailJson)).toThrow();
   });
 });
 
@@ -124,7 +144,7 @@ describe('member.ts / イベント発火', () => {
   it('dispatches member:change with action "create" on saveMember (new)', () => {
     const handler = vi.fn();
     window.addEventListener('member:change', handler);
-    saveMember('member-001', {});
+    saveMember('member-001', EMAIL, {});
     window.removeEventListener('member:change', handler);
 
     expect(handler).toHaveBeenCalledTimes(1);
@@ -132,17 +152,17 @@ describe('member.ts / イベント発火', () => {
   });
 
   it('dispatches member:change with action "update" on saveMember (existing)', () => {
-    saveMember('member-001', {});
+    saveMember('member-001', EMAIL, {});
     const handler = vi.fn();
     window.addEventListener('member:change', handler);
-    saveMember('member-001', { plan: 'gold' });
+    saveMember('member-001', EMAIL, { plan: 'gold' });
     window.removeEventListener('member:change', handler);
 
     expect(handler.mock.calls[0][0].detail).toMatchObject({ action: 'update' });
   });
 
   it('dispatches member:change with action "delete" on deleteMember', () => {
-    saveMember('member-001', {});
+    saveMember('member-001', EMAIL, {});
     const handler = vi.fn();
     window.addEventListener('member:change', handler);
     deleteMember('member-001');
@@ -152,7 +172,7 @@ describe('member.ts / イベント発火', () => {
   });
 
   it('dispatches member:login with the member on successful login', () => {
-    saveMember('member-001', { plan: 'gold' });
+    saveMember('member-001', EMAIL, { plan: 'gold' });
     const handler = vi.fn();
     window.addEventListener('member:login', handler);
     login('member-001');
@@ -172,7 +192,7 @@ describe('member.ts / イベント発火', () => {
   });
 
   it('dispatches member:logout on logout', () => {
-    saveMember('member-001', {});
+    saveMember('member-001', EMAIL, {});
     login('member-001');
     const handler = vi.fn();
     window.addEventListener('member:logout', handler);
@@ -196,7 +216,7 @@ describe('member.ts / 複数タブ間同期', () => {
   });
 
   it('re-dispatches member:login when the session key changes to a known member id from another tab', () => {
-    saveMember('member-001', { plan: 'gold' });
+    saveMember('member-001', EMAIL, { plan: 'gold' });
     localStorage.setItem('astro-table:member:session', 'member-001');
     const handler = vi.fn();
     window.addEventListener('member:login', handler);

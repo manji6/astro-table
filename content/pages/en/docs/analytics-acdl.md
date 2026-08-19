@@ -117,7 +117,7 @@ See [The commerce module](/en/docs/commerce) for more.
 
 Sites using the member feature (`member.enabled` in `site.config.ts`) push the currently logged-in member's info under the `user` namespace. This is handled by `src/modules/member/lib/acdl-bridge.ts`, which subscribes to the vendor-agnostic `member:login`/`member:logout` custom events fired by `member.ts` and converts them.
 
-- On login — `window.adobeDataLayer.push({ user: { id: member.id, ...member.attributes } })`. Whatever attributes were set on the member issuance page get spread directly into the `user` object.
+- On login — `window.adobeDataLayer.push({ user: { id: member.id, ...member.attributes, email: member.email, emailSha256 } })`. `email` is a required field at registration, so it's always present; whatever attributes were set on the member issuance page also get spread directly into the `user` object. `emailSha256` is a SHA-256 hex digest of the email after normalizing it (trimmed, lowercased), for downstream integrations that can't accept a raw email address.
 - On logout — `window.adobeDataLayer.push({ user: null })`
 
 Like `page`, these pushes carry no `event` key, so they're merged in as state rather than recorded as history. The intent is for tag managers to read this as "who, if anyone, is currently logged in."

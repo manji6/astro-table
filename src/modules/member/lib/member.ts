@@ -6,15 +6,18 @@ import siteConfig from '../../../../site.config';
 
 export type Member = {
   id: string;
+  email: string;
   attributes: Record<string, string>;
   createdAt: string;
   updatedAt: string;
 };
 
 type Roster = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   members: Member[];
 };
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export type MemberChangeAction = 'create' | 'update' | 'delete' | 'import' | 'sync';
 
@@ -46,7 +49,7 @@ const ROSTER_KEY = `${STORAGE_PREFIX}roster`;
 const SESSION_KEY = `${STORAGE_PREFIX}session`;
 
 function emptyRoster(): Roster {
-  return { schemaVersion: 1, members: [] };
+  return { schemaVersion: 2, members: [] };
 }
 
 function readRoster(): Roster {
@@ -54,11 +57,17 @@ function readRoster(): Roster {
   if (!raw) return emptyRoster();
   try {
     const parsed = JSON.parse(raw) as Roster;
-    if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.members)) return emptyRoster();
+    if (parsed.schemaVersion !== 2 || !Array.isArray(parsed.members)) return emptyRoster();
     return parsed;
   } catch {
     return emptyRoster();
   }
+}
+
+function normalizeEmail(email: string): string {
+  const trimmed = email.trim();
+  if (!EMAIL_PATTERN.test(trimmed)) throw new Error('a valid email address is required');
+  return trimmed;
 }
 
 function writeRoster(roster: Roster): void {
@@ -89,9 +98,10 @@ export function getMember(id: string): Member | undefined {
   return readRoster().members.find((m) => m.id === id);
 }
 
-export function saveMember(id: string, attributes: Record<string, string>): Member {
+export function saveMember(id: string, email: string, attributes: Record<string, string>): Member {
   const trimmedId = id.trim();
   if (!trimmedId) throw new Error('member id must not be empty');
+  const normalizedEmail = normalizeEmail(email);
 
   const roster = readRoster();
   const existing = roster.members.find((m) => m.id === trimmedId);
@@ -100,12 +110,13 @@ export function saveMember(id: string, attributes: Record<string, string>): Memb
   let member: Member;
   let action: MemberChangeAction;
   if (existing) {
+    existing.email = normalizedEmail;
     existing.attributes = attributes;
     existing.updatedAt = now;
     member = existing;
     action = 'update';
   } else {
-    member = { id: trimmedId, attributes, createdAt: now, updatedAt: now };
+    member = { id: trimmedId, email: normalizedEmail, attributes, createdAt: now, updatedAt: now };
     roster.members.push(member);
     action = 'create';
   }
@@ -163,16 +174,21 @@ export function importMembers(json: string): Member[] {
     if (typeof candidate.id !== 'string' || !candidate.id.trim()) {
       throw new Error('each imported member must have a non-empty id');
     }
+    if (typeof candidate.email !== 'string') {
+      throw new Error('each imported member must have a valid email');
+    }
+    const email = normalizeEmail(candidate.email);
     const now = new Date().toISOString();
     return {
       id: candidate.id,
+      email,
       attributes: candidate.attributes ?? {},
       createdAt: candidate.createdAt ?? now,
       updatedAt: candidate.updatedAt ?? now,
     };
   });
 
-  const roster: Roster = { schemaVersion: 1, members };
+  const roster: Roster = { schemaVersion: 2, members };
   writeRoster(roster);
   emitChange(roster, 'import');
   return members;
