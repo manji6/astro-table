@@ -84,6 +84,7 @@ button {
 input[type='text'],
 input[type='search'],
 input[type='number'],
+input[type='email'],
 select {
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--color-border);

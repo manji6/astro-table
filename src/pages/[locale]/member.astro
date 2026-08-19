@@ -93,6 +93,13 @@ const text =
     gap: 0.5rem;
     margin: 0.75rem 0;
   }
+
+  /* 他のフォーム(login/checkout等)はボタン直前が常にlabelなので、labelの
+     margin-bottomで自然に間隔が空く。このフォームだけ「属性を追加」ボタンの直後に
+     「保存」ボタンが続く構造で、ボタン同士には間隔の定義が無いため個別に補う。 */
+  .member-page__add-attribute {
+    margin-bottom: 0.75rem;
+  }
 </style>
 
 <style is:global>
