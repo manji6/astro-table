@@ -104,13 +104,17 @@ Favorites itself is a `commerce`-module feature, but since it's tied to the logg
 
 ```ts
 // On login
-window.adobeDataLayer.push({ user: { id: member.id, ...member.attributes, email: member.email } });
+window.adobeDataLayer.push({
+  user: { id: member.id, ...member.attributes, email: member.email, emailSha256: '...' },
+});
 
 // On logout
 window.adobeDataLayer.push({ user: null });
 ```
 
 Since `email` is a required field, `user.email` is always present in the push while someone is logged in. The member's `attributes` are also spread directly into the `user` object, so whatever attributes you set freely on the member issuance page (a membership tier, say) flow straight through to ACDL, letting you test tag-manager email-segmentation and personalization rules against them as-is.
+
+For downstream integrations that can't accept a raw email address (some ad/measurement platforms only accept hashed values), `emailSha256` is also pushed — a SHA-256 hex digest of the email after trimming whitespace and lowercasing it. Normalizing before hashing means the digest doesn't change just because of case or surrounding whitespace differences.
 
 `acdl-bridge.ts` is loaded from `MemberOverlay.astro`'s `<script>`. Since the overlay itself is injected on every page when `member.enabled` is true, login/logout events reach ACDL reliably no matter where they originate — the member issuance page, the login page, or the overlay itself.
 

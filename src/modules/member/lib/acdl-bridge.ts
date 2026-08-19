@@ -5,20 +5,33 @@
 
 import { getCurrentMember, type Member, type MemberLoginDetail } from './member';
 
-function pushUser(member: Member | null): void {
+// マーケティングツール側では、生のメールアドレスを扱えないケース(サーバーサイド連携先が
+// ハッシュ化済み値しか受け付けない等)があるため、SHA-256ハッシュ値も併せてpushする。
+// 大文字小文字・前後空白の差でハッシュ値が変わらないよう、正規化してからハッシュ化する
+// (主要広告/計測プラットフォームのメールハッシュ化規約と同じ考え方)。
+async function sha256Hex(text: string): Promise<string> {
+  const bytes = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function pushUser(member: Member | null): Promise<void> {
   if (member) {
-    window.adobeDataLayer.push({ user: { id: member.id, ...member.attributes, email: member.email } });
+    const emailSha256 = await sha256Hex(member.email.trim().toLowerCase());
+    window.adobeDataLayer.push({ user: { id: member.id, ...member.attributes, email: member.email, emailSha256 } });
   } else {
     window.adobeDataLayer.push({ user: null });
   }
 }
 
 function handleLogin(detail: MemberLoginDetail): void {
-  pushUser(detail.member);
+  void pushUser(detail.member);
 }
 
 function handleLogout(): void {
-  pushUser(null);
+  void pushUser(null);
 }
 
 window.addEventListener('member:login', (event) => handleLogin(event.detail));
@@ -28,4 +41,4 @@ window.addEventListener('member:logout', () => handleLogout());
 // 同様に、そのページの読み込み時点で既にログイン中ならuser状態を再pushする。これが無いと、
 // 「別ページに遷移した直後のログイン」(例: 会員発行ページのクイックスイッチ→/loginへ遷移)で、
 // 遷移前のページでpushしたuser情報が新しいページのadobeDataLayerには反映されない。
-pushUser(getCurrentMember());
+void pushUser(getCurrentMember());

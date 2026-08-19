@@ -117,7 +117,7 @@ window.adobeDataLayer.push({
 
 member機能(`site.config.ts`の`member.enabled`)を使うサイトでは、ログイン中の会員情報を`user`名前空間としてpushします。担当は`src/modules/member/lib/acdl-bridge.ts`で、`member.ts`が発火する`member:login`/`member:logout`(ベンダー非依存のCustomEvent)を購読し、変換します。
 
-- ログイン時 — `window.adobeDataLayer.push({ user: { id: member.id, ...member.attributes, email: member.email } })`。`email`は会員登録時に必須のフィールドなので常に含まれ、会員発行ページで設定した属性(`attributes`)もそのまま`user`オブジェクトに展開されます
+- ログイン時 — `window.adobeDataLayer.push({ user: { id: member.id, ...member.attributes, email: member.email, emailSha256 } })`。`email`は会員登録時に必須のフィールドなので常に含まれ、会員発行ページで設定した属性(`attributes`)もそのまま`user`オブジェクトに展開されます。`emailSha256`は正規化(前後空白除去・小文字化)後のメールアドレスをSHA-256ハッシュ化した16進数文字列で、生のメールアドレスを扱えない連携先向けです
 - ログアウト時 — `window.adobeDataLayer.push({ user: null })`
 
 `page`と同様、`event`キーを持たないpushなので「状態」としてマージされ、履歴には残りません。タグマネージャー側からは「現在ログイン中かどうか、ログイン中なら誰か」という状態として参照する使い方を想定しています。

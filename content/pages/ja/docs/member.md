@@ -104,13 +104,17 @@ importMembers(json: string): Member[]  // JSON文字列から名簿を一括イ�
 
 ```ts
 // ログイン時
-window.adobeDataLayer.push({ user: { id: member.id, ...member.attributes, email: member.email } });
+window.adobeDataLayer.push({
+  user: { id: member.id, ...member.attributes, email: member.email, emailSha256: '...' },
+});
 
 // ログアウト時
 window.adobeDataLayer.push({ user: null });
 ```
 
 `email`は必須フィールドなので、ログイン中は常に`user.email`が入った状態でACDLへpushされます。会員発行ページで自由に設定した属性(会員ランクなど)も`attributes`としてそのまま`user`オブジェクトへ展開されるため、そのままACDL経由でタグマネージャー側のメール配信条件・パーソナライゼーション条件に使う、という検証がそのまま行えます。
+
+生のメールアドレスをそのまま受け付けられない連携先(ハッシュ化済みの値しか扱わない広告/計測プラットフォーム等)向けに、`emailSha256`(前後の空白除去・小文字化してからのSHA-256ハッシュ値、16進数文字列)も併せてpushされます。正規化してからハッシュ化しているため、大文字小文字や前後の空白の違いでハッシュ値が変わることはありません。
 
 この`acdl-bridge.ts`は`MemberOverlay.astro`の`<script>`から読み込まれています。オーバーレイ自体が`member.enabled`時に全ページへ差し込まれるコンポーネントなので、ログイン/ログアウトが会員発行ページ・ログインページ・オーバーレイ自身のどこで起きても、確実にACDLへ届きます。
 
