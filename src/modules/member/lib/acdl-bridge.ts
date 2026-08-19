@@ -7,7 +7,7 @@ import { getCurrentMember, type Member, type MemberLoginDetail } from './member'
 
 function pushUser(member: Member | null): void {
   if (member) {
-    window.adobeDataLayer.push({ user: { id: member.id, ...member.attributes } });
+    window.adobeDataLayer.push({ user: { id: member.id, ...member.attributes, email: member.email } });
   } else {
     window.adobeDataLayer.push({ user: null });
   }

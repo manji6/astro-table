@@ -26,6 +26,7 @@ test('logs in with a registered member id and shows the logged-in status', async
   // 会員発行ページで先に登録してから戻ってくる。
   await page.goto('/ja/member');
   await page.locator('.member-page__id').fill('member-001');
+  await page.locator('.member-page__email').fill('member-001@example.com');
   await page.locator('.member-page__save').click();
 
   await page.goto('/ja/login');
@@ -40,6 +41,7 @@ test('logs in with a registered member id and shows the logged-in status', async
 test('logout returns to the login form', async ({ page }) => {
   await page.goto('/ja/member');
   await page.locator('.member-page__id').fill('member-001');
+  await page.locator('.member-page__email').fill('member-001@example.com');
   await page.locator('.member-page__save').click();
 
   await page.goto('/ja/login');
@@ -59,6 +61,7 @@ test('quick-switch from the member page logs the member in and lands on the logi
 }) => {
   await page.goto('/ja/member');
   await page.locator('.member-page__id').fill('member-001');
+  await page.locator('.member-page__email').fill('member-001@example.com');
   await page.locator('.member-page__save').click();
 
   await page.locator('.member-page__members li[data-id="member-001"] .member-page__login').click();

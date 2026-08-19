@@ -13,6 +13,7 @@ test.beforeEach(async ({ page }) => {
 async function registerAndLogin(page: import('@playwright/test').Page, memberId: string): Promise<void> {
   await page.goto('/ja/member');
   await page.locator('.member-page__id').fill(memberId);
+  await page.locator('.member-page__email').fill(`${memberId}@example.com`);
   await page.locator('.member-page__save').click();
 
   await page.goto('/ja/login');

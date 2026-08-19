@@ -31,6 +31,7 @@ async function getAcdlEvents(page: import('@playwright/test').Page) {
 test('logging in via the overlay pushes the user namespace to ACDL', async ({ page }) => {
   await page.goto('/ja/member');
   await page.locator('.member-page__id').fill('member-001');
+  await page.locator('.member-page__email').fill('member-001@example.com');
   await page.locator('.member-page__attr-key').fill('plan');
   await page.locator('.member-page__attr-value').fill('gold');
   await page.locator('.member-page__save').click();
@@ -51,6 +52,7 @@ test('logging in via the overlay pushes the user namespace to ACDL', async ({ pa
 test('logging out via the overlay pushes user: null to ACDL', async ({ page }) => {
   await page.goto('/ja/member');
   await page.locator('.member-page__id').fill('member-001');
+  await page.locator('.member-page__email').fill('member-001@example.com');
   await page.locator('.member-page__save').click();
   await page.locator('.member-page__members li[data-id="member-001"] .member-page__login').click();
 
@@ -73,6 +75,7 @@ test('user namespace survives a full-page navigation triggered by the quick-swit
 }) => {
   await page.goto('/ja/member');
   await page.locator('.member-page__id').fill('member-001');
+  await page.locator('.member-page__email').fill('member-001@example.com');
   await page.locator('.member-page__attr-key').fill('plan');
   await page.locator('.member-page__attr-value').fill('gold');
   await page.locator('.member-page__save').click();
@@ -91,6 +94,7 @@ test('user namespace survives a full-page navigation triggered by the quick-swit
 test('logging in via the login page (not the overlay) still pushes to ACDL', async ({ page }) => {
   await page.goto('/ja/member');
   await page.locator('.member-page__id').fill('member-001');
+  await page.locator('.member-page__email').fill('member-001@example.com');
   await page.locator('.member-page__save').click();
 
   await page.goto('/ja/login');
