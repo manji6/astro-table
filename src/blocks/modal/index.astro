@@ -65,17 +65,29 @@ const modalId = `modal-${crypto.randomUUID().slice(0, 8)}`;
 </style>
 
 <script>
+  import { pushEvent } from '../../lib/acdl';
+
   document.querySelectorAll<HTMLButtonElement>('.modal__trigger').forEach((trigger) => {
     const targetId = trigger.dataset.modalTarget;
     const dialog = targetId ? document.getElementById(targetId) : null;
     if (!(dialog instanceof HTMLDialogElement)) return;
 
-    trigger.addEventListener('click', () => dialog.showModal());
+    const label = trigger.textContent?.trim() ?? '';
+
+    trigger.addEventListener('click', () => {
+      dialog.showModal();
+      pushEvent('modal_toggle', { blockName: 'modal', label, state: 'open' });
+    });
     dialog.querySelector('.modal__close')?.addEventListener('click', () => dialog.close());
     // 背景(::backdrop)クリックで閉じる。dialog要素自体がクリックされた場合のみ判定する
     // (中身のクリックはdialog要素までバブリングしないため、これで背景クリックだけを検知できる)。
     dialog.addEventListener('click', (event) => {
       if (event.target === dialog) dialog.close();
+    });
+    // ネイティブのcloseイベントは閉じるボタン・背景クリック・ESCキーいずれの経路でも
+    // 一律で発火するため、それぞれの経路に個別のpushEventを仕込む必要がない。
+    dialog.addEventListener('close', () => {
+      pushEvent('modal_toggle', { blockName: 'modal', label, state: 'closed' });
     });
   });
 </script>

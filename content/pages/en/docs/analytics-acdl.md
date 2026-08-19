@@ -15,7 +15,7 @@ ACDL is initialized inside `<head>` in `src/layouts/Base.astro`, before any othe
 ```html
 <script is:inline define:vars={{ pageContext }}>
   window.adobeDataLayer = window.adobeDataLayer || [];
-  window.adobeDataLayer.push({ page: pageContext });
+  window.adobeDataLayer.push({ event: 'page loaded', page: pageContext });
 </script>
 <script>
   import '@adobe/adobe-client-data-layer/dist/adobe-client-data-layer.min.js';
@@ -24,10 +24,11 @@ ACDL is initialized inside `<head>` in `src/layouts/Base.astro`, before any othe
 
 `window.adobeDataLayer` is initialized as a plain array first, the `page` context is pushed onto it, and only then is the ACDL library itself loaded. The library detects the pre-existing array and upgrades it into the real object with `push`/`getState`/`addEventListener` (this is the officially recommended initialization pattern).
 
-`pageContext` comes from the page's frontmatter (`title`/`pageType`). A push with no `event` key is merged in as state rather than recorded as history.
+`pageContext` comes from the page's frontmatter (`title`/`pageType`). Following the [official ACDL wiki](https://github.com/adobe/adobe-client-data-layer/wiki)'s `"event": "page loaded"` convention, this is pushed as a proper Event Object (it includes an `event` key). The `page` key in the same push merges into state just like a plain Data Object would (`event`/`eventInfo` themselves are never persisted, either in history or in state).
 
 ```js
 window.adobeDataLayer.push({
+  event: 'page loaded',
   page: {
     pageName: string,
     pageType: string,   // "top" | "product" | "cart" | ... same enum as frontmatter's pageType
@@ -64,6 +65,8 @@ export function pushEvent(eventName: string, payload: Record<string, unknown> = 
   });
 </script>
 ```
+
+The Blocks currently using this pattern are `accordion` (`accordion_toggle`), `modal` (`modal_toggle` — `open` on trigger click, `closed` on the native `close` event; since `close` fires uniformly whether the dialog was closed via its close button, a backdrop click, or the Escape key, there's no need for a separate `pushEvent` per path), and `tabs` (`tabs_switch`, fired on every tab switch).
 
 There's no enforced naming format for events, but `<blockname>_<action>` (e.g. `accordion_toggle`) is recommended. This keeps changes local to the new Block — no central file needs editing — matching the "just add a directory" philosophy behind Blocks.
 

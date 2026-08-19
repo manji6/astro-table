@@ -71,7 +71,9 @@ const tabs = rows.map((row, i) => {
 </style>
 
 <script>
-  // キーボード操作(矢印キーでのタブ移動)・ARIA属性の切り替えを担う。ACDL計測はスコープ外。
+  // キーボード操作(矢印キーでのタブ移動)・ARIA属性の切り替えを担う。
+  import { pushEvent } from '../../lib/acdl';
+
   document.querySelectorAll<HTMLElement>('.tabs').forEach((tabsEl) => {
     const tabButtons = Array.from(tabsEl.querySelectorAll<HTMLButtonElement>('.tabs__tab'));
     const panels = Array.from(tabsEl.querySelectorAll<HTMLElement>('.tabs__panel'));
@@ -84,6 +86,7 @@ const tabs = rows.map((row, i) => {
         panels[i].hidden = !active;
       });
       tabButtons[index].focus();
+      pushEvent('tabs_switch', { blockName: 'tabs', label: tabButtons[index].textContent?.trim() ?? '' });
     }
 
     tabButtons.forEach((btn, i) => {
