@@ -15,7 +15,7 @@ ACDL is initialized inside `<head>` in `src/layouts/Base.astro`, before any othe
 ```html
 <script is:inline define:vars={{ pageContext }}>
   window.adobeDataLayer = window.adobeDataLayer || [];
-  window.adobeDataLayer.push({ event: 'page loaded', page: pageContext });
+  window.adobeDataLayer.push({ page: pageContext });
 </script>
 <script>
   import '@adobe/adobe-client-data-layer/dist/adobe-client-data-layer.min.js';
@@ -24,11 +24,8 @@ ACDL is initialized inside `<head>` in `src/layouts/Base.astro`, before any othe
 
 `window.adobeDataLayer` is initialized as a plain array first, the `page` context is pushed onto it, and only then is the ACDL library itself loaded. The library detects the pre-existing array and upgrades it into the real object with `push`/`getState`/`addEventListener` (this is the officially recommended initialization pattern).
 
-`pageContext` comes from the page's frontmatter (`title`/`pageType`). Following the [official ACDL wiki](https://github.com/adobe/adobe-client-data-layer/wiki)'s `"event": "page loaded"` convention, this is pushed as a proper Event Object (it includes an `event` key). The `page` key in the same push merges into state just like a plain Data Object would (`event`/`eventInfo` themselves are never persisted, either in history or in state).
-
 ```js
 window.adobeDataLayer.push({
-  event: 'page loaded',
   page: {
     pageName: string,
     pageType: string,   // "top" | "product" | "cart" | ... same enum as frontmatter's pageType
@@ -36,6 +33,20 @@ window.adobeDataLayer.push({
   },
 });
 ```
+
+The `page` push itself carries no `event` key, so it's a plain Data Object merged into state. It's pushed as early as possible (`<head>`) so tag managers can detect the page context as soon as possible.
+
+### Page Load event (`page loaded`)
+
+The Event Object that follows the [official ACDL wiki](https://github.com/adobe/adobe-client-data-layer/wiki)'s `"event": "page loaded"` convention is pushed separately, at the very end of `<body>` (after `MemberOverlay`).
+
+```js
+window.adobeDataLayer.push({ event: 'page loaded' });
+```
+
+This is timed separately from the `page` push (which happens at `<head>`) so it fires only after the other ACDL contexts on the page — `user` (member data), `view_item`, and the like — have already been pushed. If a tag manager instead used the `page` push itself as the Page View trigger, it would fire before `user` and friends were in place. Tag managers should trigger Page View measurement off the `page loaded` event, not the `page` push.
+
+`page loaded` carries no payload data, so per ACDL's spec it can't be caught via `adobeDataLayer:change` — listen on `adobeDataLayer:event` (or the event name itself) instead. Events that do carry payload data (e.g. `add_to_cart`'s `product`) can still be caught via `change`.
 
 ## Two patterns for pushing events
 

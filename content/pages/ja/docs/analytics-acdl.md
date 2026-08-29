@@ -15,7 +15,7 @@ pageType: "other"
 ```html
 <script is:inline define:vars={{ pageContext }}>
   window.adobeDataLayer = window.adobeDataLayer || [];
-  window.adobeDataLayer.push({ event: 'page loaded', page: pageContext });
+  window.adobeDataLayer.push({ page: pageContext });
 </script>
 <script>
   import '@adobe/adobe-client-data-layer/dist/adobe-client-data-layer.min.js';
@@ -24,11 +24,8 @@ pageType: "other"
 
 `window.adobeDataLayer`を配列として先に初期化し、そこに`page`コンテキストをpushしてから、ACDL本体を読み込みます。ACDL本体は既存の配列を検知して、`push`/`getState`/`addEventListener`を持つ本来のオブジェクトに拡張します(公式推奨の初期化パターンです)。
 
-`pageContext`はページのfrontmatter(`title`/`pageType`)から供給されます。[ACDL公式wiki](https://github.com/adobe/adobe-client-data-layer/wiki)記載の`"event": "page loaded"`規約に沿い、`event`キーを含めた正式なEvent Objectとしてpushします。同じpush内に含めた`page`キーは、通常のData Objectと同様に状態へマージされます(`event`/`eventInfo`自体は履歴にもstateにも残りません)。
-
 ```js
 window.adobeDataLayer.push({
-  event: 'page loaded',
   page: {
     pageName: string,
     pageType: string,   // "top" | "product" | "cart" | ... (frontmatterのpageTypeと同じenum)
@@ -36,6 +33,20 @@ window.adobeDataLayer.push({
   },
 });
 ```
+
+`page`のpush自体は`event`キーを持たない、単なる状態マージのData Objectです。ページコンテキストの存在をタグマネージャーができるだけ早く検知できるよう、あえてhead最速のタイミングでpushしています。
+
+### Page Load計測イベント(`page loaded`)
+
+[ACDL公式wiki](https://github.com/adobe/adobe-client-data-layer/wiki)記載の`"event": "page loaded"`規約に沿ったEvent Objectは、`body`の一番最後(`MemberOverlay`の後)で別途pushします。
+
+```js
+window.adobeDataLayer.push({ event: 'page loaded' });
+```
+
+`page`のpush(head最速)とタイミングを分けているのは、`user`(会員データ)・`view_item`等、同ページ内の他のACDLコンテキストが揃うのを待ってから発火させるためです。`page`のpush自体をPage View計測のトリガーにすると、まだ`user`等が揃っていない段階でビーコンが送出されてしまいます。タグマネージャー側でPage View計測をトリガーする際は、`page`のpushではなく`page loaded`イベントを使ってください。
+
+`page loaded`は付随データを持たないため、ACDLの仕様上`adobeDataLayer:change`では拾えません。`adobeDataLayer:event`(またはイベント名そのもの)でリスンする必要があります(`add_to_cart`等、`product`のような付随データを持つイベントは`change`でも拾えます)。
 
 ## イベントのpush: 2つのパターン
 

@@ -111,10 +111,7 @@ const homeLabel = resolvedLocale === 'ja' ? 'ホーム' : 'Home';
     <!-- ACDL初期化。他のどのスクリプトよりも先に読み込む。 -->
     <script is:inline define:vars={{ pageContext }}>
       window.adobeDataLayer = window.adobeDataLayer || [];
-      // eventキーを含めることで、ACDL公式wiki記載の"page loaded"規約に沿った
-      // 正式なEvent Objectとしてpushする(タグマネージャー側がリスナー登録できる)。
-      // pageキーは同じpush内に含めても通常のData Objectとして状態にマージされる。
-      window.adobeDataLayer.push({ event: 'page loaded', page: pageContext });
+      window.adobeDataLayer.push({ page: pageContext });
     </script>
     <script>
       import '@adobe/adobe-client-data-layer/dist/adobe-client-data-layer.min.js';
@@ -139,6 +136,14 @@ const homeLabel = resolvedLocale === 'ja' ? 'ホーム' : 'Home';
       <BlockRenderer tree={footerTree} />
     </footer>
     {siteConfig.member?.enabled && <MemberOverlay locale={locale} />}
+
+    <!-- ACDL Page Load計測イベント(ACDL公式wiki準拠の"page loaded"命名)。body最後に
+         置くことで、page/user/view_item等の同ページ内コンテキストが全てpushされた後に
+         発火する(/docs/analytics-acdl)。タグマネージャーはこのイベントをPage View
+         計測のトリガーとして使う想定。 -->
+    <script>
+      window.adobeDataLayer.push({ event: 'page loaded' });
+    </script>
   </body>
 </html>
 

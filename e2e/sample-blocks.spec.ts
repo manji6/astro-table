@@ -35,6 +35,9 @@ test('accordion toggle pushes an ACDL event via pushEvent (pattern B)', async ({
 
 // ACDL初期化(Base.astro)が"page loaded"というevent Objectとしてpushしていることを検証する
 // (ACDL公式wiki記載の規約。eventキーが無いと単なる状態マージになりイベントが発火しない)。
+// "page loaded"はbody末尾(user/view_item等の同ページ内コンテキストが揃った後)で発火する
+// 設計のため、付随データを持たない(Issue #7)。付随データなしのイベントpushは
+// 'adobeDataLayer:change'では拾えず'adobeDataLayer:event'で拾う必要がある(ACDLの仕様)。
 test('page load pushes a "page loaded" ACDL event', async ({ page }) => {
   await page.addInitScript(() => {
     window.adobeDataLayer = window.adobeDataLayer || [];
@@ -42,9 +45,9 @@ test('page load pushes a "page loaded" ACDL event', async ({ page }) => {
     window.adobeDataLayer.push(((dataLayer: {
       addEventListener: (event: string, handler: (e: unknown) => void) => void;
     }) => {
-      dataLayer.addEventListener('adobeDataLayer:change', (event) => {
-        (window as unknown as { __acdlEvents: unknown[] }).__acdlEvents.push(event);
-      });
+      const record = (event: unknown) => (window as unknown as { __acdlEvents: unknown[] }).__acdlEvents.push(event);
+      dataLayer.addEventListener('adobeDataLayer:change', record);
+      dataLayer.addEventListener('adobeDataLayer:event', record);
     }) as unknown as Record<string, unknown>);
   });
 
@@ -54,6 +57,46 @@ test('page load pushes a "page loaded" ACDL event', async ({ page }) => {
   const pageLoadedEvent = events.find((event) => event.event === 'page loaded');
 
   expect(pageLoadedEvent).toMatchObject({ event: 'page loaded' });
+});
+
+// Issue #7: "page loaded"は、user(会員データ)等の全コンテキストがpushされた「後」に
+// body末尾で発火する設計にする。page(状態)自体はhead最速のまま維持するので、
+// タグマネージャーが誤ってpageのpushをトリガーにPage Viewを送出しても全コンテキストが
+// 揃わない、という懸念に対する回避策。
+test('page loaded is pushed after the user namespace when logged in', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.adobeDataLayer = window.adobeDataLayer || [];
+    (window as unknown as { __acdlEvents: unknown[] }).__acdlEvents = [];
+    window.adobeDataLayer.push(((dataLayer: {
+      addEventListener: (event: string, handler: (e: unknown) => void) => void;
+    }) => {
+      const record = (event: unknown) => (window as unknown as { __acdlEvents: unknown[] }).__acdlEvents.push(event);
+      dataLayer.addEventListener('adobeDataLayer:change', record);
+      dataLayer.addEventListener('adobeDataLayer:event', record);
+    }) as unknown as Record<string, unknown>);
+  });
+
+  await page.goto('/ja/member');
+  await page.locator('.member-page__id').fill('member-001');
+  await page.locator('.member-page__email').fill('member-001@example.com');
+  await page.locator('.member-page__attr-key').fill('plan');
+  await page.locator('.member-page__attr-value').fill('gold');
+  await page.locator('.member-page__save').click();
+  await page.locator('.member-page__members li[data-id="member-001"] .member-page__login').click();
+  await expect(page).toHaveURL(/\/ja\/login\/?$/);
+
+  await page.goto('/ja/sample-blocks');
+  await expect(page.locator('.member-overlay__logged-in')).toBeVisible();
+
+  const events = await page.evaluate(() => (window as unknown as { __acdlEvents: Array<Record<string, unknown>> }).__acdlEvents);
+  const userIndex = events.findIndex((event) => {
+    const state = event as { user?: unknown };
+    return state.user && typeof state.user === 'object';
+  });
+  const pageLoadedIndex = events.findIndex((event) => event.event === 'page loaded');
+
+  expect(userIndex).toBeGreaterThanOrEqual(0);
+  expect(pageLoadedIndex).toBeGreaterThan(userIndex);
 });
 
 // modalの開閉(トリガークリック・ネイティブcloseイベント)でACDLパターンB(pushEvent)の
