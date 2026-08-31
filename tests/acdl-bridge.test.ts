@@ -29,11 +29,12 @@ describe('acdl-bridge.ts / cart:change → ACDL push(・§3.2)', () => {
     expect(window.adobeDataLayer.push).toHaveBeenCalledWith({
       event: 'add_to_cart',
       product: {
-        sku: 'SHOE-001',
+        SKU: 'SHOE-001',
         name: 'Running Shoes',
         categories: ['shoes'],
-        price: 12000,
-        currency: 'JPY',
+        priceTotal: 12000,
+        currencyCode: 'JPY',
+        productImageUrl: '/images/products/running-shoes.svg',
         quantity: 2,
       },
     });
@@ -44,7 +45,7 @@ describe('acdl-bridge.ts / cart:change → ACDL push(・§3.2)', () => {
 
     expect(window.adobeDataLayer.push).toHaveBeenCalledWith({
       event: 'remove_from_cart',
-      product: expect.objectContaining({ sku: 'SHOE-001', quantity: 3 }),
+      product: expect.objectContaining({ SKU: 'SHOE-001', quantity: 3 }),
     });
   });
 

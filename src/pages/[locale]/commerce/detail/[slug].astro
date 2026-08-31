@@ -95,12 +95,13 @@ const related = allProducts
     categories: product.data.categories,
     price: priceInfo.amount,
     currency: priceInfo.currency,
+    imageUrl: product.data.images[0],
   }}
 >
   window.adobeDataLayer = window.adobeDataLayer || [];
   window.adobeDataLayer.push({
     event: 'view_item',
-    product: { sku, name: productName, categories, price, currency },
+    product: { SKU: sku, name: productName, categories, priceTotal: price, currencyCode: currency, productImageUrl: imageUrl },
   });
 </script>
 <script>

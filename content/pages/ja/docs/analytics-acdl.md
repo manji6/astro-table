@@ -107,14 +107,16 @@ commerceモジュールを使うサイトでは、以下のイベントが発火
 - `begin_checkout` — チェックアウトページ(`/commerce/cart/checkout`)読み込み時。同ページの初期化スクリプトが直接push
 - `purchase` — 注文完了ページ(`/commerce/order`)読み込み時。同ページの初期化スクリプトが直接push
 
-`add_to_cart`のペイロード例です。
+`add_to_cart`のペイロード例です(`view_item`/`remove_from_cart`も同じ`product`構造)。
 
 ```js
 window.adobeDataLayer.push({
   event: 'add_to_cart',
-  product: { sku, name, categories, price, currency, quantity },
+  product: { SKU, name, categories, priceTotal, currencyCode, productImageUrl, quantity },
 });
 ```
+
+`productImageUrl`は商品メイン画像のURL(サイトルート相対パス)です。`purchase`/`begin_checkout`の`order.items`は別のキー体系(`sku`/`price`等)のままで、この`product`とは統一されていません。
 
 `purchase`のペイロード例です。
 

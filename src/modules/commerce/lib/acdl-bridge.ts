@@ -6,11 +6,12 @@ import type { CartChangeDetail, CartItem } from './cart';
 
 function toProductPayload(item: CartItem, quantity: number) {
   return {
-    sku: item.sku,
+    SKU: item.sku,
     name: item.title,
     categories: item.categories,
-    price: item.price,
-    currency: item.currency,
+    priceTotal: item.price,
+    currencyCode: item.currency,
+    productImageUrl: item.image,
     quantity,
   };
 }
