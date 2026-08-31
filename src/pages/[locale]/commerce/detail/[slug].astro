@@ -92,7 +92,6 @@ const related = allProducts
   define:vars={{
     sku: product.data.sku,
     productName: translation.title,
-    categories: product.data.categories,
     price: priceInfo.amount,
     currency: priceInfo.currency,
     imageUrl: product.data.images[0],
@@ -101,7 +100,12 @@ const related = allProducts
   window.adobeDataLayer = window.adobeDataLayer || [];
   window.adobeDataLayer.push({
     event: 'view_item',
-    product: { SKU: sku, name: productName, categories, priceTotal: price, currencyCode: currency, productImageUrl: imageUrl },
+    commerce: {
+      productViews: { value: 1, id: crypto.randomUUID() },
+    },
+    productListItems: [
+      { SKU: sku, name: productName, quantity: 1, priceTotal: price, currencyCode: currency, productImageUrl: imageUrl },
+    ],
   });
 </script>
 <script>
