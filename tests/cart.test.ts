@@ -19,8 +19,19 @@ beforeEach(() => {
 });
 
 describe('cart.ts / 状態遷移', () => {
-  it('getCart returns an empty cart when nothing is stored', () => {
-    expect(getCart(JA)).toMatchObject({ schemaVersion: 1, items: [] });
+  it('getCart returns an empty cart with a freshly issued cartId when nothing is stored', () => {
+    expect(getCart(JA)).toMatchObject({ schemaVersion: 2, items: [], cartId: expect.any(String) });
+  });
+
+  it('getCart keeps returning the same cartId across calls', () => {
+    expect(getCart(JA).cartId).toBe(getCart(JA).cartId);
+  });
+
+  it('clearCart issues a new cartId', () => {
+    const before = getCart(JA).cartId;
+    addItem(JA, sampleItem, 1);
+    const after = clearCart(JA).cartId;
+    expect(after).not.toBe(before);
   });
 
   it('addItem adds a new item with the given quantity', () => {

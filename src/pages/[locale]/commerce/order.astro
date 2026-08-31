@@ -70,10 +70,12 @@ const text =
   import siteConfig from '../../../../site.config';
 
   interface LastOrder {
-    orderId: string;
-    currency: string;
-    total: number;
-    items: Array<{ sku: string; name: string; price: number; quantity: number }>;
+    purchaseId: string;
+    cartId: string;
+    currencyCode: string;
+    priceTotal: number;
+    payments: Array<{ paymentAmount: number; paymentType: string; currencyCode: string; transactionID: string }>;
+    items: Array<{ SKU: string; name: string; quantity: number; priceTotal: number; currencyCode: string }>;
   }
 
   const root = document.querySelector<HTMLElement>('.complete-page');
@@ -95,20 +97,40 @@ const text =
       const itemsEl = root.querySelector('.complete-page__items');
       const totalEl = root.querySelector('.complete-page__total');
 
-      if (orderIdEl) orderIdEl.textContent = `${labels.orderIdLabel}: ${order.orderId}`;
+      if (orderIdEl) orderIdEl.textContent = `${labels.orderIdLabel}: ${order.purchaseId}`;
       if (itemsEl) {
         itemsEl.innerHTML = order.items.map((item) => `<li>${item.name} × ${item.quantity}</li>`).join('');
       }
       if (totalEl) {
         const formattedTotal = new Intl.NumberFormat(cartLocale, {
           style: 'currency',
-          currency: order.currency,
-        }).format(order.total);
+          currency: order.currencyCode,
+        }).format(order.priceTotal);
         totalEl.textContent = `${labels.totalLabel}: ${formattedTotal}`;
       }
 
-      window.adobeDataLayer = window.adobeDataLayer || [];
-      window.adobeDataLayer.push({ event: 'purchase', order });
+      // 購入完了イベントの二重送信対策(XDM Commerceイベント設計 §6.3)。注文完了ページの
+      // リロード・戻る/進む操作で同じpurchaseIdに対して再度pushしないよう、送信済みフラグを
+      // sessionStorageに残す。
+      const sentKey = `${siteConfig.storagePrefix}:purchaseSent:${order.purchaseId}`;
+      if (!sessionStorage.getItem(sentKey)) {
+        window.adobeDataLayer = window.adobeDataLayer || [];
+        window.adobeDataLayer.push({
+          event: 'purchase-complete',
+          commerce: {
+            purchases: { value: 1, id: `purchase-event-${order.purchaseId}` },
+            order: {
+              purchaseID: order.purchaseId,
+              currencyCode: order.currencyCode,
+              priceTotal: order.priceTotal,
+              payments: order.payments,
+            },
+            cart: { cartID: order.cartId },
+          },
+          productListItems: order.items,
+        });
+        sessionStorage.setItem(sentKey, '1');
+      }
     }
   }
 </script>

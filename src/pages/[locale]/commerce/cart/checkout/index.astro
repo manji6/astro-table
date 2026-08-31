@@ -69,6 +69,7 @@ const text =
 
 <script>
   import { getCart } from '../../../../../modules/commerce/lib/cart';
+  import { toProductListItem } from '../../../../../modules/commerce/lib/acdl-bridge';
   import { toProductLocale } from '../../../../../modules/commerce/lib/locale';
   import siteConfig from '../../../../../../site.config';
 
@@ -83,17 +84,13 @@ const text =
     } else {
       window.adobeDataLayer = window.adobeDataLayer || [];
       window.adobeDataLayer.push({
-        event: 'begin_checkout',
-        order: {
-          currency: cart.items[0]?.currency,
-          total: cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0),
-          items: cart.items.map((item) => ({
-            sku: item.sku,
-            name: item.title,
-            price: item.price,
-            quantity: item.quantity,
-          })),
+        event: 'start-checkout',
+        commerce: {
+          checkouts: { value: 1, id: crypto.randomUUID() },
+          cart: { cartID: cart.cartId, cartSource: 'cart_page' },
         },
+        // その時点のカート内全商品(XDM Commerceイベント設計 §5)。
+        productListItems: cart.items.map((item) => toProductListItem(item, item.quantity)),
       });
 
       const form = root.querySelector<HTMLFormElement>('.checkout-page__form');
