@@ -99,13 +99,25 @@ adobe-client-data-layer
 
 ## ECライフサイクルイベント(commerceモジュール、XDM Commerceイベント設計準拠)
 
-commerceモジュールを使うサイトでは、以下のイベントが発火します(`view_item`のみ`product`単一オブジェクトの独自構造、他はXDM CommerceのProduct List Items形式に揃えています)。
+commerceモジュールを使うサイトでは、以下のイベントが発火します。全イベント共通で、**そのECサイト機能に関する計測内容(発生回数・ID・カート情報等)は`commerce`キー配下、そのイベント時点の商品情報は`productListItems`配列(XDM CommerceのProduct List Items形式)** という構成に揃えています。
 
 - `view_item` — PDPページ読み込み時。PDPページの初期化スクリプトが直接push
 - `add-to-cart` — カートに追加/数量増加時。`commerce`の`acdl-bridge.ts`がpush
 - `remove-from-cart` — カートから削除/数量減少時。`commerce`の`acdl-bridge.ts`がpush
 - `start-checkout` — チェックアウトページ(`/commerce/cart/checkout`)読み込み時。同ページの初期化スクリプトが直接push
 - `purchase-complete` — 注文完了ページ(`/commerce/order`)読み込み時。同ページの初期化スクリプトが直接push
+
+`view_item`のペイロード例です。
+
+```js
+window.adobeDataLayer.push({
+  event: 'view_item',
+  commerce: {
+    productViews: { value: 1, id: string },           // idはイベントごとに一意
+  },
+  productListItems: [{ SKU, name, quantity: 1, priceTotal, currencyCode, productImageUrl }],
+});
+```
 
 `add-to-cart`のペイロード例です。
 
@@ -124,6 +136,7 @@ window.adobeDataLayer.push({
 
 `priceTotal`は単価ではなく**その明細行の合計金額**(単価 × `quantity`)です。`quantity`の意味はイベントごとに異なります。
 
+- `view_item` — 常に1(閲覧イベントなので数量という概念自体がない)
 - `add-to-cart`/`remove-from-cart` — 今回追加/削除した数量
 - `start-checkout` — その時点のカート内数量(カート内全商品を`productListItems`に含める)
 - `purchase-complete` — 注文された数量(注文に含まれる全商品を`productListItems`に含める。単一商品/複数商品どちらの注文でも配列で統一)

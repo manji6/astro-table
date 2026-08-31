@@ -99,13 +99,25 @@ A central-bridge module must be explicitly imported on every page where its trig
 
 ## Commerce lifecycle events (the commerce module, following the XDM Commerce event design)
 
-Sites using the commerce module fire these events. Only `view_item` keeps its own single-`product`-object shape; the rest follow XDM Commerce's Product List Items format.
+Sites using the commerce module fire these events. Across all of them, **what's about the commerce feature itself (fire counts, IDs, cart info, etc.) lives under the `commerce` key, and the product info at that moment lives in the `productListItems` array** (XDM Commerce's Product List Items format).
 
 - `view_item` — on PDP page load; pushed directly by the PDP's init script
 - `add-to-cart` — on adding to cart / increasing quantity; pushed by commerce's `acdl-bridge.ts`
 - `remove-from-cart` — on removing from cart / decreasing quantity; pushed by commerce's `acdl-bridge.ts`
 - `start-checkout` — on loading the checkout page (`/commerce/cart/checkout`); pushed directly by that page's init script
 - `purchase-complete` — on loading the order-complete page (`/commerce/order`); pushed directly by that page's init script
+
+Example `view_item` payload:
+
+```js
+window.adobeDataLayer.push({
+  event: 'view_item',
+  commerce: {
+    productViews: { value: 1, id: string },           // id is unique per event
+  },
+  productListItems: [{ SKU, name, quantity: 1, priceTotal, currencyCode, productImageUrl }],
+});
+```
 
 Example `add-to-cart` payload:
 
@@ -124,6 +136,7 @@ window.adobeDataLayer.push({
 
 `priceTotal` is not a unit price — it's **the total for that line item** (unit price × `quantity`). What `quantity` means depends on the event:
 
+- `view_item` — always 1 (a view has no notion of quantity)
 - `add-to-cart`/`remove-from-cart` — the quantity just added/removed
 - `start-checkout` — the quantity currently in the cart (all cart items go into `productListItems`)
 - `purchase-complete` — the quantity ordered (every item in the order goes into `productListItems` — this array shape covers single- and multi-item orders alike)

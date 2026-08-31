@@ -56,12 +56,15 @@ test.describe('commerce golden path (ja, via category listing)', () => {
 
     const viewItem = await findEvent(page, 'view_item');
     expect(viewItem).toMatchObject({
-      product: {
-        SKU: 'WKDY-SHU-001',
-        currencyCode: 'JPY',
-        priceTotal: 18000,
-        productImageUrl: '/images/products/commute-running-shoes.png',
-      },
+      commerce: { productViews: { value: 1, id: expect.any(String) } },
+      productListItems: [
+        expect.objectContaining({
+          SKU: 'WKDY-SHU-001',
+          currencyCode: 'JPY',
+          priceTotal: 18000,
+          productImageUrl: '/images/products/commute-running-shoes.png',
+        }),
+      ],
     });
 
     await page.click('.buy-box__submit');
@@ -143,12 +146,15 @@ test.describe('commerce golden path (en, via keyword search)', () => {
 
     const viewItem = await findEvent(page, 'view_item');
     expect(viewItem).toMatchObject({
-      product: {
-        SKU: 'WKDY-BAG-002',
-        currencyCode: 'USD',
-        priceTotal: 149.99,
-        productImageUrl: '/images/products/commuter-briefcase.png',
-      },
+      commerce: { productViews: { value: 1, id: expect.any(String) } },
+      productListItems: [
+        expect.objectContaining({
+          SKU: 'WKDY-BAG-002',
+          currencyCode: 'USD',
+          priceTotal: 149.99,
+          productImageUrl: '/images/products/commuter-briefcase.png',
+        }),
+      ],
     });
 
     await page.click('.buy-box__submit');
