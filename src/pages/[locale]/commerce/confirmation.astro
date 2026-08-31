@@ -86,6 +86,7 @@ const text =
 </script>
 <script>
   import { clearCart, getCart } from '../../../modules/commerce/lib/cart';
+  import { toProductListItem } from '../../../modules/commerce/lib/acdl-bridge';
   import { toProductLocale } from '../../../modules/commerce/lib/locale';
   import siteConfig from '../../../../site.config';
 
@@ -137,17 +138,25 @@ const text =
 
       submitButton?.addEventListener('click', () => {
         const currentCart = getCart(cartLocale);
-        const orderId = `ORD-${Date.now()}`;
+        // 販売側で発行した注文ID(XDM Commerceイベント設計 §6のcommerce.order.purchaseID)。
+        const purchaseId = `ORD-${Date.now()}`;
+        const paymentType = draft.payment === 'cod' ? 'cash_on_delivery' : 'credit_card';
+        const orderCurrency = currentCart.items[0]?.currency ?? 'JPY';
+        const orderTotal = currentCart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
         const lastOrder = {
-          orderId,
-          currency: currentCart.items[0]?.currency,
-          total: currentCart.items.reduce((sum, item) => sum + item.price * item.quantity, 0),
-          items: currentCart.items.map((item) => ({
-            sku: item.sku,
-            name: item.title,
-            price: item.price,
-            quantity: item.quantity,
-          })),
+          purchaseId,
+          cartId: currentCart.cartId,
+          currencyCode: orderCurrency,
+          priceTotal: orderTotal,
+          payments: [
+            {
+              paymentAmount: orderTotal,
+              paymentType,
+              currencyCode: orderCurrency,
+              transactionID: `TXN-${Date.now()}`,
+            },
+          ],
+          items: currentCart.items.map((item) => toProductListItem(item, item.quantity)),
         };
         localStorage.setItem(`${siteConfig.storagePrefix}:lastOrder:${cartLocale}`, JSON.stringify(lastOrder));
         localStorage.removeItem(`${siteConfig.storagePrefix}:checkoutDraft:${cartLocale}`);

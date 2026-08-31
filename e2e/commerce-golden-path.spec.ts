@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 // ゴールデンパスE2E。
 // TOP → カテゴリ一覧 or キーワード検索 → PDP → カートに追加 → /commerce/cart → /commerce/cart/checkout
 // → /commerce/confirmation → /commerce/order
-// を、ACDLの`view_item`/`add_to_cart`/`begin_checkout`/`purchase`の各pushとあわせて検証する。
+// を、ACDLの`view_item`/`add-to-cart`/`start-checkout`/`purchase-complete`の各pushとあわせて検証する。
 // 商品発見の2経路(カテゴリ一覧・キーワード検索)を、ja/en2ロケールに振り分けてカバーする。
 
 async function captureAcdlEvents(page: Page): Promise<void> {
@@ -66,8 +66,11 @@ test.describe('commerce golden path (ja, via category listing)', () => {
 
     await page.click('.buy-box__submit');
     await page.waitForTimeout(200);
-    const addToCart = await findEvent(page, 'add_to_cart');
-    expect(addToCart).toMatchObject({ product: { SKU: 'WKDY-SHU-001', quantity: 1 } });
+    const addToCart = await findEvent(page, 'add-to-cart');
+    expect(addToCart).toMatchObject({
+      commerce: { cart: { cartSource: 'product_detail' } },
+      productListItems: [expect.objectContaining({ SKU: 'WKDY-SHU-001', quantity: 1, priceTotal: 18000 })],
+    });
 
     await page.goto('/ja/commerce/cart');
     await expect(page.locator('.cart-page__items li')).toHaveCount(1);
@@ -75,8 +78,16 @@ test.describe('commerce golden path (ja, via category listing)', () => {
 
     await page.goto('/ja/commerce/cart/checkout');
     await expect(page).toHaveURL(/\/ja\/commerce\/cart\/checkout\/?$/); // カートが空でないのでリダイレクトされない
-    const beginCheckout = await findEvent(page, 'begin_checkout');
-    expect(beginCheckout).toMatchObject({ order: { currency: 'JPY', total: 18000 } });
+    const startCheckout = await findEvent(page, 'start-checkout');
+    expect(startCheckout).toMatchObject({
+      commerce: {
+        checkouts: { value: 1 },
+        cart: { cartID: expect.any(String), cartSource: 'cart_page' },
+      },
+      productListItems: [
+        expect.objectContaining({ SKU: 'WKDY-SHU-001', quantity: 1, priceTotal: 18000, currencyCode: 'JPY' }),
+      ],
+    });
 
     await page.fill('input[name="name"]', 'テスト太郎');
     await page.fill('input[name="address"]', '東京都渋谷区1-2-3');
@@ -92,8 +103,20 @@ test.describe('commerce golden path (ja, via category listing)', () => {
     await expect(page.locator('.complete-page__order-id')).toContainText('注文番号: ORD-');
     await expect(page.locator('.complete-page__items')).toContainText('コミュートランニングシューズ');
     await expect(page.locator('.complete-page__total')).toHaveText('合計: ￥18,000');
-    const purchase = await findEvent(page, 'purchase');
-    expect(purchase).toMatchObject({ order: { currency: 'JPY', total: 18000 } });
+    const purchaseComplete = await findEvent(page, 'purchase-complete');
+    expect(purchaseComplete).toMatchObject({
+      commerce: {
+        purchases: { value: 1, id: expect.stringMatching(/^purchase-event-ORD-/) },
+        order: {
+          purchaseID: expect.stringMatching(/^ORD-/),
+          currencyCode: 'JPY',
+          priceTotal: 18000,
+          payments: [expect.objectContaining({ paymentAmount: 18000, paymentType: 'credit_card' })],
+        },
+        cart: { cartID: expect.any(String) },
+      },
+      productListItems: [expect.objectContaining({ SKU: 'WKDY-SHU-001', quantity: 1, priceTotal: 18000 })],
+    });
 
     await page.goto('/ja/commerce/cart');
     await expect(page.locator('.cart-page__empty')).toBeVisible();
@@ -130,8 +153,11 @@ test.describe('commerce golden path (en, via keyword search)', () => {
 
     await page.click('.buy-box__submit');
     await page.waitForTimeout(200);
-    const addToCart = await findEvent(page, 'add_to_cart');
-    expect(addToCart).toMatchObject({ product: { SKU: 'WKDY-BAG-002', quantity: 1 } });
+    const addToCart = await findEvent(page, 'add-to-cart');
+    expect(addToCart).toMatchObject({
+      commerce: { cart: { cartSource: 'product_detail' } },
+      productListItems: [expect.objectContaining({ SKU: 'WKDY-BAG-002', quantity: 1, priceTotal: 149.99 })],
+    });
 
     await page.goto('/en/commerce/cart');
     await expect(page.locator('.cart-page__items li')).toHaveCount(1);
@@ -139,8 +165,16 @@ test.describe('commerce golden path (en, via keyword search)', () => {
 
     await page.goto('/en/commerce/cart/checkout');
     await expect(page).toHaveURL(/\/en\/commerce\/cart\/checkout\/?$/);
-    const beginCheckout = await findEvent(page, 'begin_checkout');
-    expect(beginCheckout).toMatchObject({ order: { currency: 'USD', total: 149.99 } });
+    const startCheckout = await findEvent(page, 'start-checkout');
+    expect(startCheckout).toMatchObject({
+      commerce: {
+        checkouts: { value: 1 },
+        cart: { cartID: expect.any(String), cartSource: 'cart_page' },
+      },
+      productListItems: [
+        expect.objectContaining({ SKU: 'WKDY-BAG-002', quantity: 1, priceTotal: 149.99, currencyCode: 'USD' }),
+      ],
+    });
 
     await page.fill('input[name="name"]', 'Jane Doe');
     await page.fill('input[name="address"]', '123 Main St');
@@ -156,11 +190,84 @@ test.describe('commerce golden path (en, via keyword search)', () => {
     await expect(page.locator('.complete-page__order-id')).toContainText('Order number: ORD-');
     await expect(page.locator('.complete-page__items')).toContainText('Commuter Briefcase');
     await expect(page.locator('.complete-page__total')).toHaveText('Total: $149.99');
-    const purchase = await findEvent(page, 'purchase');
-    expect(purchase).toMatchObject({ order: { currency: 'USD', total: 149.99 } });
+    const purchaseComplete = await findEvent(page, 'purchase-complete');
+    expect(purchaseComplete).toMatchObject({
+      commerce: {
+        purchases: { value: 1, id: expect.stringMatching(/^purchase-event-ORD-/) },
+        order: {
+          purchaseID: expect.stringMatching(/^ORD-/),
+          currencyCode: 'USD',
+          priceTotal: 149.99,
+          payments: [expect.objectContaining({ paymentAmount: 149.99, paymentType: 'credit_card' })],
+        },
+        cart: { cartID: expect.any(String) },
+      },
+      productListItems: [expect.objectContaining({ SKU: 'WKDY-BAG-002', quantity: 1, priceTotal: 149.99 })],
+    });
 
     await page.goto('/en/commerce/cart');
     await expect(page.locator('.cart-page__empty')).toBeVisible();
+  });
+});
+
+test.describe('multi-item purchase', () => {
+  test('start-checkout/purchase-complete carry productListItems for every item in a multi-item order', async ({
+    page,
+  }) => {
+    await captureAcdlEvents(page);
+
+    await page.goto('/ja/commerce/detail/commute-running-shoes');
+    await page.click('.buy-box__submit');
+    await page.waitForTimeout(200);
+
+    await page.goto('/ja/commerce/detail/performance-dress-shirt');
+    await page.click('.buy-box__submit');
+    await page.waitForTimeout(200);
+
+    await page.goto('/ja/commerce/cart');
+    await expect(page.locator('.cart-page__items li')).toHaveCount(2);
+
+    await page.goto('/ja/commerce/cart/checkout');
+    const startCheckout = await findEvent(page, 'start-checkout');
+    const checkoutItems = startCheckout?.productListItems as Array<{ SKU: string }> | undefined;
+    expect(checkoutItems?.map((item) => item.SKU).sort()).toEqual(['WKDY-SHT-001', 'WKDY-SHU-001']);
+
+    await page.fill('input[name="name"]', 'テスト太郎');
+    await page.fill('input[name="address"]', '東京都渋谷区1-2-3');
+    await page.click('button[type="submit"]');
+
+    await expect(page).toHaveURL(/\/ja\/commerce\/confirmation\/?$/);
+    await page.click('.confirmation-page__submit');
+    await expect(page).toHaveURL(/\/ja\/commerce\/order\/?$/);
+
+    const purchaseComplete = await findEvent(page, 'purchase-complete');
+    const purchaseItems = purchaseComplete?.productListItems as Array<{ SKU: string }> | undefined;
+    expect(purchaseItems?.map((item) => item.SKU).sort()).toEqual(['WKDY-SHT-001', 'WKDY-SHU-001']);
+    expect(purchaseComplete).toMatchObject({ commerce: { order: { priceTotal: 18000 + 9800 } } });
+  });
+});
+
+test.describe('purchase-complete de-duplication', () => {
+  test('reloading the order-complete page does not push purchase-complete again', async ({ page }) => {
+    await captureAcdlEvents(page);
+
+    await page.goto('/ja/commerce/detail/commute-running-shoes');
+    await page.click('.buy-box__submit');
+    await page.waitForTimeout(200);
+
+    await page.goto('/ja/commerce/cart/checkout');
+    await page.fill('input[name="name"]', 'テスト太郎');
+    await page.fill('input[name="address"]', '東京都渋谷区1-2-3');
+    await page.click('button[type="submit"]');
+    await page.click('.confirmation-page__submit');
+    await expect(page).toHaveURL(/\/ja\/commerce\/order\/?$/);
+
+    const firstLoadEvents = await getAcdlEvents(page);
+    expect(firstLoadEvents.filter((event) => event.event === 'purchase-complete')).toHaveLength(1);
+
+    await page.reload();
+    const reloadEvents = await getAcdlEvents(page);
+    expect(reloadEvents.filter((event) => event.event === 'purchase-complete')).toHaveLength(0);
   });
 });
 

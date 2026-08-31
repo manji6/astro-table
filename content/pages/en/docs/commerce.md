@@ -153,11 +153,11 @@ window.addEventListener('cart:change', (event) => {
 cart.ts (state management, vendor-agnostic)
    ↓ window.dispatchEvent('cart:change', ...)
 acdl-bridge.ts (ACDL-specific mapping layer)
-   ↓ window.adobeDataLayer.push({ event: 'add_to_cart', ... })
+   ↓ window.adobeDataLayer.push({ event: 'add-to-cart', ... })
 adobe-client-data-layer
 ```
 
-`add` maps to `add_to_cart`, `remove` maps to `remove_from_cart`, and `update` looks at the before/after quantity delta to decide which of the two to push. `clear` and `sync` push nothing.
+`add` maps to `add-to-cart`, `remove` maps to `remove-from-cart`, and `update` looks at the before/after quantity delta to decide which of the two to push. `clear` and `sync` push nothing. See [Adobe Client Data Layer integration](/en/docs/analytics-acdl) for the payload details (the `productListItems` array, `commerce.cart.cartID`, etc.).
 
 `acdl-bridge.ts` is never auto-loaded — it must be explicitly imported on every page where a cart change can happen (currently `commerce/detail/[slug].astro` and `commerce/cart/index.astro`). If you add a new page that mutates the cart, don't forget this import. See [Adobe Client Data Layer integration](/en/docs/analytics-acdl) for the full ACDL design.
 

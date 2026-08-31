@@ -46,7 +46,7 @@ window.adobeDataLayer.push({ event: 'page loaded' });
 
 This is timed separately from the `page` push (which happens at `<head>`) so it fires only after the other ACDL contexts on the page — `user` (member data), `view_item`, and the like — have already been pushed. If a tag manager instead used the `page` push itself as the Page View trigger, it would fire before `user` and friends were in place. Tag managers should trigger Page View measurement off the `page loaded` event, not the `page` push.
 
-`page loaded` carries no payload data, so per ACDL's spec it can't be caught via `adobeDataLayer:change` — listen on `adobeDataLayer:event` (or the event name itself) instead. Events that do carry payload data (e.g. `add_to_cart`'s `product`) can still be caught via `change`.
+`page loaded` carries no payload data, so per ACDL's spec it can't be caught via `adobeDataLayer:change` — listen on `adobeDataLayer:event` (or the event name itself) instead. Events that do carry payload data (e.g. `add-to-cart`'s `productListItems`) can still be caught via `change`.
 
 ## Two patterns for pushing events
 
@@ -83,13 +83,13 @@ There's no enforced naming format for events, but `<blockname>_<action>` (e.g. `
 
 ### Pattern A: the central bridge (cross-cutting state)
 
-Changes that aren't scoped to a single Block — cart state, a member logging in or out, page-arrival lifecycle events (`view_item`/`begin_checkout`/`purchase`) — get funneled through one central location instead. The commerce module's `acdl-bridge.ts` and the member module's `acdl-bridge.ts` are both examples of this.
+Changes that aren't scoped to a single Block — cart state, a member logging in or out, page-arrival lifecycle events (`view_item`/`start-checkout`/`purchase-complete`) — get funneled through one central location instead. The commerce module's `acdl-bridge.ts` and the member module's `acdl-bridge.ts` are both examples of this.
 
 ```
 cart.ts (state management, vendor-agnostic)
    ↓ window.dispatchEvent(new CustomEvent('cart:change', ...))
 acdl-bridge.ts (ACDL-specific mapping layer)
-   ↓ window.adobeDataLayer.push({ event: 'add_to_cart', ... })
+   ↓ window.adobeDataLayer.push({ event: 'add-to-cart', ... })
 adobe-client-data-layer
 ```
 
@@ -97,35 +97,63 @@ The state-management module (`cart.ts`, `member.ts`) has no idea ACDL exists —
 
 A central-bridge module must be explicitly imported on every page where its triggering event can occur. Because this is a static site, all JS is reloaded on every navigation — nothing gets automatically pulled in by the shared layout. (The member module's `acdl-bridge.ts` is a notable exception: it's loaded from `MemberOverlay.astro`, which is itself injected into every page when `member.enabled` is true, so there's effectively no page where the import can be missed.)
 
-## Commerce lifecycle events (the commerce module)
+## Commerce lifecycle events (the commerce module, following the XDM Commerce event design)
 
-Sites using the commerce module fire these events:
+Sites using the commerce module fire these events. Only `view_item` keeps its own single-`product`-object shape; the rest follow XDM Commerce's Product List Items format.
 
 - `view_item` — on PDP page load; pushed directly by the PDP's init script
-- `add_to_cart` — on adding to cart / increasing quantity; pushed by commerce's `acdl-bridge.ts`
-- `remove_from_cart` — on removing from cart / decreasing quantity; pushed by commerce's `acdl-bridge.ts`
-- `begin_checkout` — on loading the checkout page (`/commerce/cart/checkout`); pushed directly by that page's init script
-- `purchase` — on loading the order-complete page (`/commerce/order`); pushed directly by that page's init script
+- `add-to-cart` — on adding to cart / increasing quantity; pushed by commerce's `acdl-bridge.ts`
+- `remove-from-cart` — on removing from cart / decreasing quantity; pushed by commerce's `acdl-bridge.ts`
+- `start-checkout` — on loading the checkout page (`/commerce/cart/checkout`); pushed directly by that page's init script
+- `purchase-complete` — on loading the order-complete page (`/commerce/order`); pushed directly by that page's init script
 
-Example `add_to_cart` payload (`view_item`/`remove_from_cart` share the same `product` shape):
-
-```js
-window.adobeDataLayer.push({
-  event: 'add_to_cart',
-  product: { SKU, name, categories, priceTotal, currencyCode, productImageUrl, quantity },
-});
-```
-
-`productImageUrl` is the main product image URL (a site-root-relative path). `purchase`/`begin_checkout`'s `order.items` keep a separate key set (`sku`/`price`, etc.) and are not aligned with this `product` shape.
-
-Example `purchase` payload:
+Example `add-to-cart` payload:
 
 ```js
 window.adobeDataLayer.push({
-  event: 'purchase',
-  order: { orderId, currency, total, items: [{ sku, name, price, quantity }] },
+  event: 'add-to-cart',
+  commerce: {
+    productListAdds: { value: 1, id: string },       // id is unique per event
+    cart: { cartID: string, cartSource: 'product_detail' },
+  },
+  productListItems: [
+    { SKU, name, quantity, priceTotal, currencyCode, productImageUrl, productAddMethod: 'add_to_cart_button' },
+  ],
 });
 ```
+
+`priceTotal` is not a unit price — it's **the total for that line item** (unit price × `quantity`). What `quantity` means depends on the event:
+
+- `add-to-cart`/`remove-from-cart` — the quantity just added/removed
+- `start-checkout` — the quantity currently in the cart (all cart items go into `productListItems`)
+- `purchase-complete` — the quantity ordered (every item in the order goes into `productListItems` — this array shape covers single- and multi-item orders alike)
+
+`commerce.cart.cartID` is the cart's unique identifier (`cart.ts` issues it with `crypto.randomUUID()` and reissues a new one whenever the cart empties out, i.e. on order confirmation). `cartSource` (only on `add-to-cart`) records where the addition happened; it's always `product_detail` since only PDP-initiated additions are supported.
+
+Example `purchase-complete` payload:
+
+```js
+window.adobeDataLayer.push({
+  event: 'purchase-complete',
+  commerce: {
+    purchases: { value: 1, id: `purchase-event-${purchaseId}` },  // de-dup key for the sent event
+    order: {
+      purchaseID: string,       // the order ID issued by the store (business key) — kept separate from commerce.purchases.id
+      currencyCode: string,
+      priceTotal: number,       // order-level total; should match the sum of line-item priceTotal values
+      payments: [{ paymentAmount: number, paymentType: string, currencyCode: string, transactionID: string }],
+    },
+    cart: { cartID: string },
+  },
+  productListItems: [{ SKU, name, quantity, priceTotal, currencyCode }],
+});
+```
+
+`purchase-complete` guards against reload-triggered duplicate sends:
+
+1. It only fires on the order-confirmed page (`/commerce/order`)
+2. `purchaseID` is the order-system-issued ID captured at the moment the order was confirmed on `/commerce/confirmation` (never regenerated on page load)
+3. A per-`purchaseID` "already sent" flag is kept in `sessionStorage`, so a reload or back/forward navigation on `order.astro` won't push the same `purchaseID` twice
 
 See [The commerce module](/en/docs/commerce) for more.
 
