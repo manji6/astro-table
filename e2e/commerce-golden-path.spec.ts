@@ -55,12 +55,19 @@ test.describe('commerce golden path (ja, via category listing)', () => {
     await expect(page.locator('.buy-box__stock')).toHaveText('在庫あり');
 
     const viewItem = await findEvent(page, 'view_item');
-    expect(viewItem).toMatchObject({ product: { sku: 'WKDY-SHU-001', currency: 'JPY', price: 18000 } });
+    expect(viewItem).toMatchObject({
+      product: {
+        SKU: 'WKDY-SHU-001',
+        currencyCode: 'JPY',
+        priceTotal: 18000,
+        productImageUrl: '/images/products/commute-running-shoes.png',
+      },
+    });
 
     await page.click('.buy-box__submit');
     await page.waitForTimeout(200);
     const addToCart = await findEvent(page, 'add_to_cart');
-    expect(addToCart).toMatchObject({ product: { sku: 'WKDY-SHU-001', quantity: 1 } });
+    expect(addToCart).toMatchObject({ product: { SKU: 'WKDY-SHU-001', quantity: 1 } });
 
     await page.goto('/ja/commerce/cart');
     await expect(page.locator('.cart-page__items li')).toHaveCount(1);
@@ -112,12 +119,19 @@ test.describe('commerce golden path (en, via keyword search)', () => {
     await expect(page.locator('.buy-box__stock')).toHaveText('In stock');
 
     const viewItem = await findEvent(page, 'view_item');
-    expect(viewItem).toMatchObject({ product: { sku: 'WKDY-BAG-002', currency: 'USD', price: 149.99 } });
+    expect(viewItem).toMatchObject({
+      product: {
+        SKU: 'WKDY-BAG-002',
+        currencyCode: 'USD',
+        priceTotal: 149.99,
+        productImageUrl: '/images/products/commuter-briefcase.png',
+      },
+    });
 
     await page.click('.buy-box__submit');
     await page.waitForTimeout(200);
     const addToCart = await findEvent(page, 'add_to_cart');
-    expect(addToCart).toMatchObject({ product: { sku: 'WKDY-BAG-002', quantity: 1 } });
+    expect(addToCart).toMatchObject({ product: { SKU: 'WKDY-BAG-002', quantity: 1 } });
 
     await page.goto('/en/commerce/cart');
     await expect(page.locator('.cart-page__items li')).toHaveCount(1);

@@ -107,14 +107,16 @@ Sites using the commerce module fire these events:
 - `begin_checkout` — on loading the checkout page (`/commerce/cart/checkout`); pushed directly by that page's init script
 - `purchase` — on loading the order-complete page (`/commerce/order`); pushed directly by that page's init script
 
-Example `add_to_cart` payload:
+Example `add_to_cart` payload (`view_item`/`remove_from_cart` share the same `product` shape):
 
 ```js
 window.adobeDataLayer.push({
   event: 'add_to_cart',
-  product: { sku, name, categories, price, currency, quantity },
+  product: { SKU, name, categories, priceTotal, currencyCode, productImageUrl, quantity },
 });
 ```
+
+`productImageUrl` is the main product image URL (a site-root-relative path). `purchase`/`begin_checkout`'s `order.items` keep a separate key set (`sku`/`price`, etc.) and are not aligned with this `product` shape.
 
 Example `purchase` payload:
 
