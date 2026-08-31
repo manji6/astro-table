@@ -46,7 +46,7 @@ window.adobeDataLayer.push({ event: 'page loaded' });
 
 `page`のpush(head最速)とタイミングを分けているのは、`user`(会員データ)・`view_item`等、同ページ内の他のACDLコンテキストが揃うのを待ってから発火させるためです。`page`のpush自体をPage View計測のトリガーにすると、まだ`user`等が揃っていない段階でビーコンが送出されてしまいます。タグマネージャー側でPage View計測をトリガーする際は、`page`のpushではなく`page loaded`イベントを使ってください。
 
-`page loaded`は付随データを持たないため、ACDLの仕様上`adobeDataLayer:change`では拾えません。`adobeDataLayer:event`(またはイベント名そのもの)でリスンする必要があります(`add_to_cart`等、`product`のような付随データを持つイベントは`change`でも拾えます)。
+`page loaded`は付随データを持たないため、ACDLの仕様上`adobeDataLayer:change`では拾えません。`adobeDataLayer:event`(またはイベント名そのもの)でリスンする必要があります(`add-to-cart`等、`productListItems`のような付随データを持つイベントは`change`でも拾えます)。
 
 ## イベントのpush: 2つのパターン
 
@@ -83,13 +83,13 @@ export function pushEvent(eventName: string, payload: Record<string, unknown> = 
 
 ### パターンA: 中央集権ブリッジ(横断的な状態変化)
 
-カート状態の変化、会員のログイン/ログアウト、ページ到達によるライフサイクルイベント(`view_item`/`begin_checkout`/`purchase`)など、特定のBlockに閉じない変化は、中央の1箇所にまとめます。commerceモジュールの`acdl-bridge.ts`とmemberモジュールの`acdl-bridge.ts`がいずれもこの実例です。
+カート状態の変化、会員のログイン/ログアウト、ページ到達によるライフサイクルイベント(`view_item`/`start-checkout`/`purchase-complete`)など、特定のBlockに閉じない変化は、中央の1箇所にまとめます。commerceモジュールの`acdl-bridge.ts`とmemberモジュールの`acdl-bridge.ts`がいずれもこの実例です。
 
 ```
 cart.ts (状態管理。ベンダー非依存)
    ↓ window.dispatchEvent(new CustomEvent('cart:change', ...))
 acdl-bridge.ts (ACDL特化のマッピング層)
-   ↓ window.adobeDataLayer.push({ event: 'add_to_cart', ... })
+   ↓ window.adobeDataLayer.push({ event: 'add-to-cart', ... })
 adobe-client-data-layer
 ```
 
@@ -97,35 +97,63 @@ adobe-client-data-layer
 
 中央集権ブリッジのモジュールは、そのイベントが発生しうる全ページで明示的にimportする必要があります。静的サイトはページ遷移のたびに全JSが読み込み直されるため、共通レイアウトから自動で読み込まれるわけではありません(memberモジュールの`acdl-bridge.ts`は例外的に、`member.enabled`時に全ページへ差し込まれる`MemberOverlay.astro`から読み込まれているため、実質的にどのページでもimport漏れが起きません)。
 
-## ECライフサイクルイベント(commerceモジュール、`page`/イベント本体)
+## ECライフサイクルイベント(commerceモジュール、XDM Commerceイベント設計準拠)
 
-commerceモジュールを使うサイトでは、以下のイベントが発火します。
+commerceモジュールを使うサイトでは、以下のイベントが発火します(`view_item`のみ`product`単一オブジェクトの独自構造、他はXDM CommerceのProduct List Items形式に揃えています)。
 
 - `view_item` — PDPページ読み込み時。PDPページの初期化スクリプトが直接push
-- `add_to_cart` — カートに追加/数量増加時。`commerce`の`acdl-bridge.ts`がpush
-- `remove_from_cart` — カートから削除/数量減少時。`commerce`の`acdl-bridge.ts`がpush
-- `begin_checkout` — チェックアウトページ(`/commerce/cart/checkout`)読み込み時。同ページの初期化スクリプトが直接push
-- `purchase` — 注文完了ページ(`/commerce/order`)読み込み時。同ページの初期化スクリプトが直接push
+- `add-to-cart` — カートに追加/数量増加時。`commerce`の`acdl-bridge.ts`がpush
+- `remove-from-cart` — カートから削除/数量減少時。`commerce`の`acdl-bridge.ts`がpush
+- `start-checkout` — チェックアウトページ(`/commerce/cart/checkout`)読み込み時。同ページの初期化スクリプトが直接push
+- `purchase-complete` — 注文完了ページ(`/commerce/order`)読み込み時。同ページの初期化スクリプトが直接push
 
-`add_to_cart`のペイロード例です(`view_item`/`remove_from_cart`も同じ`product`構造)。
-
-```js
-window.adobeDataLayer.push({
-  event: 'add_to_cart',
-  product: { SKU, name, categories, priceTotal, currencyCode, productImageUrl, quantity },
-});
-```
-
-`productImageUrl`は商品メイン画像のURL(サイトルート相対パス)です。`purchase`/`begin_checkout`の`order.items`は別のキー体系(`sku`/`price`等)のままで、この`product`とは統一されていません。
-
-`purchase`のペイロード例です。
+`add-to-cart`のペイロード例です。
 
 ```js
 window.adobeDataLayer.push({
-  event: 'purchase',
-  order: { orderId, currency, total, items: [{ sku, name, price, quantity }] },
+  event: 'add-to-cart',
+  commerce: {
+    productListAdds: { value: 1, id: string },       // idはイベントごとに一意
+    cart: { cartID: string, cartSource: 'product_detail' },
+  },
+  productListItems: [
+    { SKU, name, quantity, priceTotal, currencyCode, productImageUrl, productAddMethod: 'add_to_cart_button' },
+  ],
 });
 ```
+
+`priceTotal`は単価ではなく**その明細行の合計金額**(単価 × `quantity`)です。`quantity`の意味はイベントごとに異なります。
+
+- `add-to-cart`/`remove-from-cart` — 今回追加/削除した数量
+- `start-checkout` — その時点のカート内数量(カート内全商品を`productListItems`に含める)
+- `purchase-complete` — 注文された数量(注文に含まれる全商品を`productListItems`に含める。単一商品/複数商品どちらの注文でも配列で統一)
+
+`commerce.cart.cartID`はカートの一意識別子(`cart.ts`が`crypto.randomUUID()`で発行し、カートが空になるたび=注文確定時に再発行)です。`cartSource`は`add-to-cart`のみ、追加が起きた場所を表します(PDPからの追加のみサポートしているため常に`product_detail`)。
+
+`purchase-complete`のペイロード例です。
+
+```js
+window.adobeDataLayer.push({
+  event: 'purchase-complete',
+  commerce: {
+    purchases: { value: 1, id: `purchase-event-${purchaseId}` },  // 送信イベントの重複排除キー
+    order: {
+      purchaseID: string,       // 販売側で発行した注文ID(業務キー)。commerce.purchases.idとは別管理
+      currencyCode: string,
+      priceTotal: number,       // 注文全体の合計(商品明細priceTotalの合計と一致させる)
+      payments: [{ paymentAmount: number, paymentType: string, currencyCode: string, transactionID: string }],
+    },
+    cart: { cartID: string },
+  },
+  productListItems: [{ SKU, name, quantity, priceTotal, currencyCode }],
+});
+```
+
+`purchase-complete`は以下のリロード起因の二重送信対策をしています。
+
+1. 注文確定済みページ(`/commerce/order`)でのみ発火する
+2. `purchaseID`は`/commerce/confirmation`で注文確定した時点の注文システム発行IDを使う(ページロードのたびに生成し直さない)
+3. `sessionStorage`に`purchaseID`ごとの送信済みフラグを残し、同じ`purchaseID`に対しては`order.astro`のリロード・戻る/進む操作で再度pushしない
 
 詳しくは[commerceモジュール](/ja/docs/commerce)を参照してください。
 

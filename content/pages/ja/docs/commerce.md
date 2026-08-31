@@ -153,11 +153,11 @@ window.addEventListener('cart:change', (event) => {
 cart.ts (状態管理、ベンダー非依存)
    ↓ window.dispatchEvent('cart:change', ...)
 acdl-bridge.ts (ACDL特化の変換層)
-   ↓ window.adobeDataLayer.push({ event: 'add_to_cart', ... })
+   ↓ window.adobeDataLayer.push({ event: 'add-to-cart', ... })
 adobe-client-data-layer
 ```
 
-`add`→`add_to_cart`、`remove`→`remove_from_cart`、`update`は変更前後の数量差分(delta)を見て`add_to_cart`/`remove_from_cart`のどちらかにマッピングします。`clear`/`sync`はpushしません。
+`add`→`add-to-cart`、`remove`→`remove-from-cart`、`update`は変更前後の数量差分(delta)を見て`add-to-cart`/`remove-from-cart`のどちらかにマッピングします。`clear`/`sync`はpushしません。ペイロード(`productListItems`配列、`commerce.cart.cartID`等)の詳細は[Adobe Client Data Layer連携](/ja/docs/analytics-acdl)を参照してください。
 
 `acdl-bridge.ts`はどこからも自動では読み込まれません。カート変更が起こりうるページ(現状`commerce/detail/[slug].astro`と`commerce/cart/index.astro`)で明示的に`import`する必要があります。新しくカート操作を追加するページを作る場合は、このimportを忘れないでください。ACDL全体の設計は[Adobe Client Data Layer連携](/ja/docs/analytics-acdl)を参照してください。
 

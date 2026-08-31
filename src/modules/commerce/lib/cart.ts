@@ -10,13 +10,16 @@ export type CartItem = {
   currency: 'JPY' | 'USD';
   image: string;
   quantity: number;
-  // ACDLの add_to_cart/remove_from_cart ペイロードに必要な拡張フィールド。
+  // ACDLの add-to-cart/remove-from-cart ペイロードに必要な拡張フィールド。
   sku: string;
   categories: string[];
 };
 
 export type Cart = {
-  schemaVersion: 1;
+  schemaVersion: 2;
+  // ACDLのcommerce.cart.cartIDに使う一意識別子(XDM Commerceイベント設計)。
+  // カートが空になるたび(clearCart)に新しいカートとして再発行する。
+  cartId: string;
   items: CartItem[];
   updatedAt: string;
 };
@@ -45,18 +48,25 @@ function cartKey(locale: string): string {
 }
 
 function emptyCart(): Cart {
-  return { schemaVersion: 1, items: [], updatedAt: new Date(0).toISOString() };
+  return { schemaVersion: 2, cartId: crypto.randomUUID(), items: [], updatedAt: new Date(0).toISOString() };
+}
+
+// 新規カートを発行してlocalStorageへ永続化する(以後同じcartIdが使われるようにするため)。
+function issueCart(locale: string): Cart {
+  const cart = emptyCart();
+  writeCart(locale, cart);
+  return cart;
 }
 
 function readCart(locale: string): Cart {
   const raw = localStorage.getItem(cartKey(locale));
-  if (!raw) return emptyCart();
+  if (!raw) return issueCart(locale);
   try {
     const parsed = JSON.parse(raw) as Cart;
-    if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.items)) return emptyCart();
+    if (parsed.schemaVersion !== 2 || !Array.isArray(parsed.items) || !parsed.cartId) return issueCart(locale);
     return parsed;
   } catch {
-    return emptyCart();
+    return issueCart(locale);
   }
 }
 
