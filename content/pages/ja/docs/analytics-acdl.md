@@ -174,12 +174,29 @@ window.adobeDataLayer.push({
 
 member機能(`site.config.ts`の`member.enabled`)を使うサイトでは、ログイン中の会員情報を`user`名前空間としてpushします。担当は`src/modules/member/lib/acdl-bridge.ts`で、`member.ts`が発火する`member:login`/`member:logout`(ベンダー非依存のCustomEvent)を購読し、変換します。
 
-- ログイン時 — `window.adobeDataLayer.push({ user: { id: member.id, ...member.attributes, email: member.email, emailSha256 } })`。`email`は会員登録時に必須のフィールドなので常に含まれ、会員発行ページで設定した属性(`attributes`)もそのまま`user`オブジェクトに展開されます。`emailSha256`は正規化(前後空白除去・小文字化)後のメールアドレスをSHA-256ハッシュ化した16進数文字列で、生のメールアドレスを扱えない連携先向けです
-- ログアウト時 — `window.adobeDataLayer.push({ user: null })`
+`user`のpushには、`page loaded`と同様に`event`キー付きのトリガー用イベントがあります。`user`(identity)が意味する事象を「操作ログ」と「状態セット」の2つに分けて、別々のイベント名で発火します。
 
-`page`と同様、`event`キーを持たないpushなので「状態」としてマージされ、履歴には残りません。タグマネージャー側からは「現在ログイン中かどうか、ログイン中なら誰か」という状態として参照する使い方を想定しています。
+- **ログイン操作**(`member:login`購読時) — `user_login`(操作ログ)と`set_identity`(状態セット)の2つを続けてpushします。どちらも同じ`user`オブジェクトを伴います
 
-`window.adobeDataLayer`はページ単位(フルページ遷移で消える)なので、`page`コンテキストと同様、ページの読み込み時点で既にログイン中なら`user`状態を再pushします。これが無いと、たとえば会員発行ページのクイックログインから別ページへ遷移した直後に、遷移前のページでpushした`user`情報が新しいページの`adobeDataLayer`に反映されない、という問題が起こります。
+  ```js
+  window.adobeDataLayer.push({ event: 'user_login', user: { id, ...attributes, email, emailSha256 } });
+  window.adobeDataLayer.push({ event: 'set_identity', user: { id, ...attributes, email, emailSha256 } });
+  ```
+
+  `email`は会員登録時に必須のフィールドなので常に含まれ、会員発行ページで設定した属性(`attributes`)もそのまま`user`オブジェクトに展開されます。`emailSha256`は正規化(前後空白除去・小文字化)後のメールアドレスをSHA-256ハッシュ化した16進数文字列で、生のメールアドレスを扱えない連携先向けです
+
+- **ページ読み込み時の状態復元**(下記) — `set_identity`のみpushします。実際のログイン操作ではない(既存セッションを新しいページのdataLayerにも反映しているだけ)ため、`user_login`は出しません
+- **ログアウト操作**(`member:logout`購読時) — `user_logout`のみpushします(`user: null`)。identityがセットされたわけではないので`set_identity`は出しません
+
+  ```js
+  window.adobeDataLayer.push({ event: 'user_logout', user: null });
+  ```
+
+- 誰もログインしていない状態でのページ読み込み時 — `window.adobeDataLayer.push({ user: null })`(`event`キーなし)
+
+いずれのpushも`user`キー自体は状態としてマージされるため、タグマネージャー側は「現在ログイン中かどうか、ログイン中なら誰か」を状態として参照しつつ、`user_login`/`user_logout`/`set_identity`をトリガーとしても使えます。
+
+`window.adobeDataLayer`はページ単位(フルページ遷移で消える)なので、`page`コンテキストと同様、ページの読み込み時点で既にログイン中なら`user`状態を再pushします(これが上記の「ページ読み込み時の状態復元」)。これが無いと、たとえば会員発行ページのクイックログインから別ページへ遷移した直後に、遷移前のページでpushした`user`情報が新しいページの`adobeDataLayer`に反映されない、という問題が起こります。
 
 `member`モジュールの`acdl-bridge.ts`は、`member.enabled`時に全ページへ差し込まれる`MemberOverlay.astro`から読み込まれています。そのため、ログイン/ログアウトが会員発行ページ・ログインページ・オーバーレイ自身のどこで起きても、確実にACDLへ届きます(中央集権ブリッジのimport漏れが構造的に起きないケースです)。会員機能全体の詳しい説明は[会員機能(ログインダミーシステム)](/ja/docs/member)を参照してください。
 
