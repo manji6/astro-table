@@ -49,14 +49,20 @@ beforeEach(async () => {
 });
 
 describe('member/acdl-bridge.ts / member:login・member:logout → ACDL push', () => {
-  it('pushes the user namespace with id, attributes, email, and emailSha256 on member:login', async () => {
+  it('pushes user_login (operation log) then set_identity (state-set notice) on member:login, both carrying the same user payload', async () => {
     dispatchLogin({ memberId: member.id, member });
     await flushMicrotasks();
 
     const emailSha256 = await sha256Hex(member.email.trim().toLowerCase());
-    expect(window.adobeDataLayer.push).toHaveBeenCalledWith({
-      user: { id: 'member-001', plan: 'gold', region: 'jp', email: 'member-001@example.com', emailSha256 },
-    });
+    const user = { id: 'member-001', plan: 'gold', region: 'jp', email: 'member-001@example.com', emailSha256 };
+    const calls = (window.adobeDataLayer.push as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
+
+    expect(calls).toContainEqual({ event: 'user_login', user });
+    expect(calls).toContainEqual({ event: 'set_identity', user });
+    // user_loginはset_identityより先(操作ログ→状態セット通知の順)。
+    expect(calls.findIndex((c) => c.event === 'user_login')).toBeLessThan(
+      calls.findIndex((c) => c.event === 'set_identity'),
+    );
   });
 
   it('hashes the email after trimming and lowercasing it', async () => {
@@ -71,10 +77,11 @@ describe('member/acdl-bridge.ts / member:login・member:logout → ACDL push', (
     expect(call.user.emailSha256).toBe(emailSha256);
   });
 
-  it('pushes user: null on member:logout', () => {
+  it('pushes user_logout with user: null on member:logout (no set_identity, since nothing was set)', () => {
     dispatchLogout();
 
-    expect(window.adobeDataLayer.push).toHaveBeenCalledWith({ user: null });
+    expect(window.adobeDataLayer.push).toHaveBeenCalledWith({ event: 'user_logout', user: null });
+    expect(window.adobeDataLayer.push).not.toHaveBeenCalledWith(expect.objectContaining({ event: 'set_identity' }));
   });
 });
 
@@ -83,20 +90,25 @@ describe('member/acdl-bridge.ts / member:login・member:logout → ACDL push', (
 // (実ブラウザで発見した不具合)。モジュール読み込み時点で現在のセッションを
 // 再pushすることで、pageコンテキストと同様にページ遷移をまたいで状態を維持する。
 describe('member/acdl-bridge.ts / モジュール読み込み時の状態復元(ページ遷移対策)', () => {
-  it('pushes the current user on load when a session already exists', async () => {
+  it('pushes set_identity (not user_login, since no login operation happened) on load when a session already exists', async () => {
     const { saveMember, login } = await import('../src/modules/member/lib/member');
     saveMember('member-001', 'member-001@example.com', { plan: 'gold' });
     login('member-001');
+    // login()は非同期(sha256Hex待ち)でpushする。次のloadBridge()がwindow.adobeDataLayerを
+    // 差し替える前に完了させておかないと、遅延したpushが差し替え後の新モックに乗ってしまう。
+    await flushMicrotasks();
 
     await loadBridge();
 
     const emailSha256 = await sha256Hex('member-001@example.com');
     expect(window.adobeDataLayer.push).toHaveBeenCalledWith({
+      event: 'set_identity',
       user: { id: 'member-001', plan: 'gold', email: 'member-001@example.com', emailSha256 },
     });
+    expect(window.adobeDataLayer.push).not.toHaveBeenCalledWith(expect.objectContaining({ event: 'user_login' }));
   });
 
-  it('pushes user: null on load when nobody is logged in', () => {
+  it('pushes user: null (no event) on load when nobody is logged in', () => {
     expect(window.adobeDataLayer.push).toHaveBeenCalledWith({ user: null });
   });
 });

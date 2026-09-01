@@ -174,12 +174,29 @@ See [The commerce module](/en/docs/commerce) for more.
 
 Sites using the member feature (`member.enabled` in `site.config.ts`) push the currently logged-in member's info under the `user` namespace. This is handled by `src/modules/member/lib/acdl-bridge.ts`, which subscribes to the vendor-agnostic `member:login`/`member:logout` custom events fired by `member.ts` and converts them.
 
-- On login — `window.adobeDataLayer.push({ user: { id: member.id, ...member.attributes, email: member.email, emailSha256 } })`. `email` is a required field at registration, so it's always present; whatever attributes were set on the member issuance page also get spread directly into the `user` object. `emailSha256` is a SHA-256 hex digest of the email after normalizing it (trimmed, lowercased), for downstream integrations that can't accept a raw email address.
-- On logout — `window.adobeDataLayer.push({ user: null })`
+Like `page loaded`, `user` pushes carry an `event`-keyed trigger too. What `user` (identity) means gets split into two separate concerns, each with its own event name: an operation log and a state-set notice.
 
-Like `page`, these pushes carry no `event` key, so they're merged in as state rather than recorded as history. The intent is for tag managers to read this as "who, if anyone, is currently logged in."
+- **Login operation** (on `member:login`) — pushes both `user_login` (operation log) and `set_identity` (state-set notice) back to back, both carrying the same `user` object:
 
-Because `window.adobeDataLayer` is scoped per page (a full navigation clears it), the bridge re-pushes the current `user` state at load time whenever someone is already logged in — the same reasoning that applies to the `page` context. Without this, navigating from, say, a quick-login on the member issuance page straight to another page would leave that new page's `adobeDataLayer` without the `user` push made on the previous page.
+  ```js
+  window.adobeDataLayer.push({ event: 'user_login', user: { id, ...attributes, email, emailSha256 } });
+  window.adobeDataLayer.push({ event: 'set_identity', user: { id, ...attributes, email, emailSha256 } });
+  ```
+
+  `email` is a required field at registration, so it's always present; whatever attributes were set on the member issuance page also get spread directly into the `user` object. `emailSha256` is a SHA-256 hex digest of the email after normalizing it (trimmed, lowercased), for downstream integrations that can't accept a raw email address.
+
+- **State restoration on page load** (below) — pushes `set_identity` only. This isn't an actual login operation (it's just reflecting an existing session into the new page's data layer), so `user_login` isn't fired.
+- **Logout operation** (on `member:logout`) — pushes `user_logout` only (`user: null`). No identity was set, so `set_identity` isn't fired:
+
+  ```js
+  window.adobeDataLayer.push({ event: 'user_logout', user: null });
+  ```
+
+- On page load when nobody is logged in — `window.adobeDataLayer.push({ user: null })` (no `event` key)
+
+In every case, `user` itself is still merged into state, so tag managers can read "who, if anyone, is currently logged in" as state while also using `user_login`/`user_logout`/`set_identity` as triggers.
+
+Because `window.adobeDataLayer` is scoped per page (a full navigation clears it), the bridge re-pushes the current `user` state at load time whenever someone is already logged in — the same reasoning that applies to the `page` context (this is the "state restoration on page load" case above). Without this, navigating from, say, a quick-login on the member issuance page straight to another page would leave that new page's `adobeDataLayer` without the `user` push made on the previous page.
 
 The member module's `acdl-bridge.ts` is loaded from `MemberOverlay.astro`, which is injected into every page whenever `member.enabled` is true. That means login/logout reaches ACDL reliably no matter where it originates — the member issuance page, the login page, or the overlay itself — a case where the usual "don't forget to import the bridge" risk of the central-bridge pattern structurally doesn't apply. See [Member features (the login sandbox)](/en/docs/member) for the full picture of the member system.
 

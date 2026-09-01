@@ -28,7 +28,7 @@ async function getAcdlEvents(page: import('@playwright/test').Page) {
   );
 }
 
-test('logging in via the overlay pushes the user namespace to ACDL', async ({ page }) => {
+test('logging in via the overlay pushes user_login then set_identity to ACDL', async ({ page }) => {
   await page.goto('/ja/member');
   await page.locator('.member-page__id').fill('member-001');
   await page.locator('.member-page__email').fill('member-001@example.com');
@@ -42,14 +42,13 @@ test('logging in via the overlay pushes the user namespace to ACDL', async ({ pa
   await expect(page.locator('.member-overlay__logged-in')).toBeVisible();
 
   const events = await getAcdlEvents(page);
-  const userEvent = events.find((e) => {
-    const state = e as { user?: unknown };
-    return state.user && typeof state.user === 'object';
-  });
-  expect(userEvent).toMatchObject({ user: { id: 'member-001', plan: 'gold' } });
+  const userLoginEvent = events.find((e) => e.event === 'user_login');
+  const setIdentityEvent = events.find((e) => e.event === 'set_identity');
+  expect(userLoginEvent).toMatchObject({ user: { id: 'member-001', plan: 'gold' } });
+  expect(setIdentityEvent).toMatchObject({ user: { id: 'member-001', plan: 'gold' } });
 });
 
-test('logging out via the overlay pushes user: null to ACDL', async ({ page }) => {
+test('logging out via the overlay pushes user_logout with user: null to ACDL', async ({ page }) => {
   await page.goto('/ja/member');
   await page.locator('.member-page__id').fill('member-001');
   await page.locator('.member-page__email').fill('member-001@example.com');
@@ -63,8 +62,8 @@ test('logging out via the overlay pushes user: null to ACDL', async ({ page }) =
   await expect(page.locator('.member-overlay__logged-out')).toBeVisible();
 
   const events = await getAcdlEvents(page);
-  const logoutEvent = events.find((e) => 'user' in e && e.user === null);
-  expect(logoutEvent).toBeTruthy();
+  const logoutEvent = events.find((e) => e.event === 'user_logout');
+  expect(logoutEvent).toMatchObject({ user: null });
 });
 
 // 実際に発生した不具合の再現テスト: 会員発行ページの「ログインする」ボタンは
@@ -87,6 +86,12 @@ test('user namespace survives a full-page navigation triggered by the quick-swit
     (window.adobeDataLayer as unknown as { getState: () => Record<string, unknown> }).getState(),
   );
   expect(state).toMatchObject({ user: { id: 'member-001', plan: 'gold' } });
+
+  // 遷移先ページでの再pushは「ログイン操作」ではなく「状態復元」なので、
+  // set_identityのみでuser_loginは出さない。
+  const events = await getAcdlEvents(page);
+  expect(events.some((e) => e.event === 'set_identity')).toBe(true);
+  expect(events.some((e) => e.event === 'user_login')).toBe(false);
 });
 
 // ログインページ(#39)から直接ログインした場合もACDLへ届くことを確認する
@@ -103,9 +108,6 @@ test('logging in via the login page (not the overlay) still pushes to ACDL', asy
   await expect(page.locator('.login-page__status')).toBeVisible();
 
   const events = await getAcdlEvents(page);
-  const userEvent = events.find((e) => {
-    const state = e as { user?: unknown };
-    return state.user && typeof state.user === 'object';
-  });
-  expect(userEvent).toMatchObject({ user: { id: 'member-001' } });
+  const userLoginEvent = events.find((e) => e.event === 'user_login');
+  expect(userLoginEvent).toMatchObject({ user: { id: 'member-001' } });
 });

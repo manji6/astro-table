@@ -17,28 +17,41 @@ async function sha256Hex(text: string): Promise<string> {
     .join('');
 }
 
-async function pushUser(member: Member | null): Promise<void> {
-  if (member) {
-    const emailSha256 = await sha256Hex(member.email.trim().toLowerCase());
-    window.adobeDataLayer.push({ user: { id: member.id, ...member.attributes, email: member.email, emailSha256 } });
-  } else {
-    window.adobeDataLayer.push({ user: null });
+// userのpushには2種類の意味がある。「ログイン/ログアウトという操作が実際に起きた」ことを示す
+// 操作ログ(user_login/user_logout)と、「identity情報がdataLayerにセットされた」ことを示す
+// 状態セット通知(set_identity)。ページ遷移時の状態復元(下記)は実際のログイン操作ではないため、
+// set_identityのみ発火しuser_loginは出さない。ログアウトはidentityをクリアするだけなので
+// set_identityは出さない。
+async function pushUserSet(member: Member, events: string[]): Promise<void> {
+  const emailSha256 = await sha256Hex(member.email.trim().toLowerCase());
+  const user = { id: member.id, ...member.attributes, email: member.email, emailSha256 };
+  for (const event of events) {
+    window.adobeDataLayer.push({ event, user });
   }
 }
 
+function pushUserCleared(event?: string): void {
+  window.adobeDataLayer.push(event ? { event, user: null } : { user: null });
+}
+
 function handleLogin(detail: MemberLoginDetail): void {
-  void pushUser(detail.member);
+  void pushUserSet(detail.member, ['user_login', 'set_identity']);
 }
 
 function handleLogout(): void {
-  void pushUser(null);
+  pushUserCleared('user_logout');
 }
-
-window.addEventListener('member:login', (event) => handleLogin(event.detail));
-window.addEventListener('member:logout', () => handleLogout());
 
 // window.adobeDataLayerはページ単位(フルページ遷移で消える)なので、`page`コンテキストと
 // 同様に、そのページの読み込み時点で既にログイン中ならuser状態を再pushする。これが無いと、
 // 「別ページに遷移した直後のログイン」(例: 会員発行ページのクイックスイッチ→/loginへ遷移)で、
 // 遷移前のページでpushしたuser情報が新しいページのadobeDataLayerには反映されない。
-void pushUser(getCurrentMember());
+window.addEventListener('member:login', (event) => handleLogin(event.detail));
+window.addEventListener('member:logout', () => handleLogout());
+
+const restoredMember = getCurrentMember();
+if (restoredMember) {
+  void pushUserSet(restoredMember, ['set_identity']);
+} else {
+  pushUserCleared();
+}
