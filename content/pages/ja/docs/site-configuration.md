@@ -11,7 +11,10 @@ AstroTableのサイト全体設定は、リポジトリルートの2つのファ
 `site.config.ts`は`SiteConfig`型に沿ったオブジェクトをデフォルトエクスポートするだけのファイルです。共通レイアウト(`Base.astro`)がビルド時にこの値を読み込み、ページの`<head>`やサイト全体の挙動に反映します。
 
 ```ts
+import type { HTMLAttributes } from 'astro/types';
+
 export interface SiteConfig {
+  head?: { links?: Array<HTMLAttributes<'link'>> };
   tags: {
     // 外部スクリプト(タグマネージャー本体など)
     scripts: Array<{ src: string; async?: boolean; defer?: boolean }>;
@@ -83,3 +86,26 @@ export default defineConfig({
 ```
 
 i18nはAstroTableではオプトイン機能です。設定しなければ単一言語サイトとして、ロケールプレフィックスなしのURLで動作します。設定項目の詳細やディレクトリ構成については、多言語対応のページを参照してください。
+
+## head内のlink要素とSEO
+
+`site.config.ts` の省略可能な `head.links` でWebフォントやfaviconを追加できます。属性は `astro/types` の `HTMLAttributes<'link'>` に準拠します。省略時は追加しません。ACDL初期化・マーケティングタグより前に出力します。
+
+```ts
+head: {
+  links: [
+    { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+    { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: 'anonymous' },
+    { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP&display=swap' },
+    { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
+  ],
+},
+```
+
+`astro.config.mjs` に本番URLを `site: 'https://example.com'` として設定すると、共通レイアウトが各ページのcanonicalを自動出力します。`site` が未設定ならcanonical・hreflangは出力しません。i18nが無効ならcanonicalのみです。
+
+i18nが有効な場合、pagesコレクション内の同じ相対パス（`ja/about.md` と `en/about.md`、ディレクトリの `index.md` も含む）を翻訳として扱います。実在する翻訳ページだけにhreflangを出力し、デフォルト言語の翻訳があればx-defaultも出力します。frontmatterまたはmetadata Blockのrobots/googlebotでnoindexを指定したページは、hreflangの出力元・リンク先から除外します（canonicalは出力します）。
+
+固定Astroテンプレートでは `Base` の `translations` に `{ locale, pathname, noindex? }` の配列を渡せます。同じパスを複数言語で必ず生成する場合は `translationLocales={['ja', 'en']}` を使えます。本体のcommerce・会員・Blockライブラリの固定ページもこの方式です。存在しない翻訳先は指定しないでください。独自テンプレートで翻訳先を指定しない場合はcanonicalのみ出力します。
+
+canonical・hreflangは自動生成されるため、`head.links` から重複して追加しないでください。`href` は指定どおり出力されるため、`base` を使うサイトのローカルURLにはそのプレフィックスを含めます。

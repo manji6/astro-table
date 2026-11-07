@@ -11,7 +11,10 @@ AstroTable's site-wide configuration lives in two files at the repository root. 
 `site.config.ts` simply default-exports an object that conforms to the `SiteConfig` type. The shared layout (`Base.astro`) reads this value at build time and reflects it in each page's `<head>` and in site-wide behavior.
 
 ```ts
+import type { HTMLAttributes } from 'astro/types';
+
 export interface SiteConfig {
+  head?: { links?: Array<HTMLAttributes<'link'>> };
   tags: {
     // External scripts (e.g. a tag manager loader)
     scripts: Array<{ src: string; async?: boolean; defer?: boolean }>;
@@ -85,3 +88,26 @@ export default defineConfig({
 ```
 
 i18n is an opt-in feature in AstroTable. If left unconfigured, the site behaves as a single-language site with unprefixed URLs. See the internationalization page for details on the settings and directory layout.
+
+## Head links and SEO
+
+Use the optional `head.links` in `site.config.ts` for fonts, favicons, and other link elements. Attributes follow `HTMLAttributes<'link'>` from `astro/types`. Omitting it adds no links. Links appear before ACDL initialization and marketing tags.
+
+```ts
+head: {
+  links: [
+    { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+    { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: 'anonymous' },
+    { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP&display=swap' },
+    { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
+  ],
+},
+```
+
+Set `site: 'https://example.com'` in `astro.config.mjs` to generate a canonical URL for each page using the shared layout. Without `site`, no canonical or hreflang links are generated. Without i18n, only canonical is generated.
+
+With i18n enabled, pages at matching relative paths in the pages collection (such as `ja/about.md` and `en/about.md`, including directory `index.md` pages) are translations. Only existing translations receive hreflang links. An existing default-language translation also receives x-default. Pages marked noindex in frontmatter or in a robots/googlebot metadata Block are excluded both as sources and targets of hreflang links; canonical is retained.
+
+For fixed Astro templates, pass an array of `{ locale, pathname, noindex? }` to the `translations` prop of `Base`. Templates that generate the same path in every listed language can use `translationLocales={['ja', 'en']}`. The bundled commerce, member, and Block library templates use this approach. Only supply languages whose pages actually exist. Custom templates without translation information receive canonical only.
+
+Do not duplicate the automatically generated canonical or hreflang links in `head.links`. Custom `href` values are emitted as supplied; include the base prefix in local URLs when deploying under `base`.

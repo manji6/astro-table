@@ -51,7 +51,7 @@ const text =
       };
 ---
 
-<Base title={text.title} pageType="other" locale={locale} path="member">
+<Base translationLocales={['ja', 'en']} title={text.title} pageType="other" locale={locale} path="member">
   <div class="member-page" data-locale={locale} data-text={JSON.stringify(text)}>
     <h1>{text.title}</h1>
 

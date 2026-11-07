@@ -1,6 +1,11 @@
-// マーケティングタグ注入設定。
-// Base.astroがACDL初期化の後・他のどのスクリプトよりも前にこの内容を<head>へ出力する。
+import type { HTMLAttributes } from 'astro/types';
+
+// サイト共通設定。Base.astroがhead.linksを先に、tagsをACDL初期化の後に出力する。
 export interface SiteConfig {
+  // Webフォント・favicon等のlink要素。省略時は追加しない。
+  head?: {
+    links?: Array<HTMLAttributes<'link'>>;
+  };
   tags: {
     // 外部スクリプト(タグマネージャー本体等)
     scripts: Array<{ src: string; async?: boolean; defer?: boolean }>;

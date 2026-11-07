@@ -9,6 +9,8 @@ import LanguageSwitcher from '../components/LanguageSwitcher.astro';
 import Breadcrumbs, { type Crumb } from '../components/Breadcrumbs.astro';
 import MemberOverlay from '../modules/member/components/MemberOverlay.astro';
 import siteConfig from '../../site.config';
+import astroConfig from '../../astro.config.mjs';
+import { buildSeoLinks, hasNoindexMetadata, localeLanguages, pagePathname, type TranslationLink } from '../lib/seo-links';
 // 仮の全体デザイン(プレースホルダー)。本番デザイン確定後に差し替え・削除してよい。
 import '../styles/global.css';
 
@@ -34,6 +36,10 @@ export interface Props {
   path?: string;
   // ページ本文のmetadata Blockから抽出した追加meta要素。
   metadata?: MetadataEntry[];
+  // 実在する翻訳先のみ指定する。pages以外のルートでも明示的に利用可能。
+  translations?: TranslationLink[];
+  // 同じpathを全言語で生成する固定テンプレート向け。実在するロケールのみ渡す。
+  translationLocales?: string[];
   // パンくずの手動trail。pagesコレクションに存在しないページ(commerceの固定
   // テンプレート等)向け。指定しない場合はpathからpagesコレクションを自動で引く。
   breadcrumbs?: Crumb[];
@@ -49,7 +55,23 @@ const {
   path = '',
   metadata = [],
   breadcrumbs,
+  translations = [],
+  translationLocales = [],
 } = Astro.props;
+
+const defaultLocale = astroConfig.i18n?.defaultLocale;
+const languages = localeLanguages(astroConfig.i18n?.locales ?? []);
+const templateTranslations = translationLocales.filter((loc) => languages.has(loc)).map((loc) => ({
+  locale: languages.get(loc)!,
+  pathname: pagePathname(`${loc}/${path}`, astroConfig),
+}));
+const seoLinks = buildSeoLinks({
+  site: Astro.site,
+  pathname: Astro.url.pathname,
+  noindex: noindex || hasNoindexMetadata(metadata),
+  defaultLocale: defaultLocale ? languages.get(defaultLocale) : undefined,
+  translations: [...translations, ...templateTranslations],
+});
 
 // ACDLページコンテキスト。frontmatterから供給する。
 // localeは多言語対応(オプトイン)を使う場合のみ含める。
@@ -107,6 +129,9 @@ const homeLabel = resolvedLocale === 'ja' ? 'ホーム' : 'Home';
         <meta name={name} content={value} />
       )
     ))}
+
+    {seoLinks.map((link) => <link {...link} />)}
+    {siteConfig.head?.links?.map((link) => <link {...link} />)}
 
     <!-- ACDL初期化。他のどのスクリプトよりも先に読み込む。 -->
     <script is:inline define:vars={{ pageContext }}>
