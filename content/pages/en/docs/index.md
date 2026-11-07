@@ -14,6 +14,7 @@ This page is itself written in AstroTable's Block notation. Its source lives at 
 | --- | --- | --- |
 | | Setup | /en/docs/setup |
 | | Directory structure | /en/docs/directory-structure |
+| | Pulling in template updates | /en/docs/template-updates |
 | | Content authoring | /en/docs/content-authoring |
 
 ## Blocks

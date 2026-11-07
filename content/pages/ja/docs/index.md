@@ -14,6 +14,7 @@ pageType: "other"
 | --- | --- | --- |
 | | セットアップ | /ja/docs/setup |
 | | ディレクトリ構成 | /ja/docs/directory-structure |
+| | テンプレート更新の取り込み | /ja/docs/template-updates |
 | | コンテンツオーサリング | /ja/docs/content-authoring |
 
 ## Block
