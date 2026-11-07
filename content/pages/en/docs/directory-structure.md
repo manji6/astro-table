@@ -88,7 +88,7 @@ Pages built with Astro's file-based routing.
 
 AstroTable assumes "one site = one repository." It does not support a monorepo-style setup where a single repository and a single build serve multiple sites (Astro's built-in i18n routing is global to the app, and a monorepo layout would require a heavy custom rewrite of the catch-all route to decide per-site whether i18n applies). When you need multiple sites, handle it one of two ways instead.
 
-**No shared design or custom Blocks across sites**: simply click "Use this template" from AstroTable multiple times. Each site pulls in AstroTable core updates only, using the "Pulling in template updates" steps above.
+**No shared design or custom Blocks across sites**: simply click "Use this template" from AstroTable multiple times. Each site pulls in AstroTable core updates only, using the [template update steps](/en/docs/template-updates).
 
 **Multiple sites that should keep sharing the same brand design and custom Blocks**: insert one more layer, a "shared brand template," between AstroTable core and each site.
 

@@ -30,26 +30,12 @@ npm run dev                       # 開発サーバー起動
 
 ## テンプレート更新の取り込み(サイト実体側リポジトリでの作業)
 
-本リポジトリはAstroTable本体(テンプレートリポジトリ)。「Use this template」等で作成したサイト実体側のリポジトリで、後から本体の更新(バグ修正・新しい共通Block追加等)を取り込みたい場合は以下の手順を使う。
+[GitHub Releases](https://github.com/manji6/astro-table/releases)のリリースノートを確認し、`v0.1.0`等のタグを指定してサイト側の作業ブランチへ取り込みます。作成元の版を正しく記録する初回手順と、通常の更新マージは別の操作です。`-s ours` はファイルを変更せず取り込み済みとして記録するため、未適用の最新版には使わないでください。
 
-```bash
-# 初回のみ: AstroTable本体をupstreamとして登録
-git remote add upstream https://github.com/<owner>/astro-table.git
+詳しい手順（作成元不明の場合、競合の解消、検証、取り込み済みの版の確認）は以下を参照してください。
 
-# 更新を取り込みたい時
-git fetch upstream
-git merge upstream/main   # または git rebase upstream/main
-```
-
-コア部分(`/src/blocks`, `/src/lib`, `/src/components`, `/src/layouts`等)とサイト固有部分(`/content`のコンテンツ・commerceモジュール)のファイルパスが分離されているため、upstreamの変更がコア部分のみに閉じていればコンフリクトはほぼ発生しない。
-
-**注意: 初回のマージは`fatal: refusing to merge unrelated histories`で失敗する。** 「Use this template」で作成したリポジトリは、forkと違って単一の初期コミットしか持たず、AstroTable本体とは共通の祖先コミットを持たないため。初回のみ`--allow-unrelated-histories`を付けて実行する。
-
-```bash
-git merge upstream/main --allow-unrelated-histories
-```
-
-このマージコミット以降は両者の履歴がつながるため、2回目以降は通常の`git merge upstream/main`(フラグなし)で問題ない。
+- [日本語: テンプレート更新の取り込み](content/pages/ja/docs/template-updates.md)
+- [English: Pulling in Template Updates](content/pages/en/docs/template-updates.md)
 
 ## Cloudflare Workersへのデプロイ
 
