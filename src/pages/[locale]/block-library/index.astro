@@ -20,7 +20,7 @@ const text =
     : { title: 'Block Library', intro: 'Every Block currently available on this site. Click a Block to see how it is written (Markdown) and how it renders.' };
 ---
 
-<Base title={text.title} pageType="other" locale={locale} path="block-library" breadcrumbs={[{ label: text.title }]}>
+<Base translationLocales={['ja', 'en']} title={text.title} pageType="other" locale={locale} path="block-library" breadcrumbs={[{ label: text.title }]}>
   <h1>{text.title}</h1>
   <p>{text.intro}</p>
 

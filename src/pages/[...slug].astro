@@ -3,6 +3,8 @@
 // 多言語対応(オプトイン)時は、コンテンツのディレクトリ構成(pages/<locale>/*.md)が
 // そのままURLのロケールプレフィックスになる。
 import { getCollection } from 'astro:content';
+import { hasNoindexMetadata, localeLanguages, pagePathname } from '../lib/seo-links';
+import astroConfig from '../../astro.config.mjs';
 import { parsePage } from '../lib/markdown/parse-page';
 import { extractMetadata } from '../lib/markdown/extract-metadata';
 import { extractSectionMetadata } from '../lib/markdown/extract-section-metadata';
@@ -11,17 +13,34 @@ import Base from '../layouts/Base.astro';
 
 export async function getStaticPaths() {
   const pages = await getCollection('pages');
+  const locales = astroConfig.i18n?.locales ?? [];
+  const localeByPath = localeLanguages(locales);
+  const pagePath = (id: string) => id.split('/').slice(1).join('/').replace(/(^|\/)index$/, '');
+  const translationsByPath = new Map<string, import('../lib/seo-links').TranslationLink[]>();
+  for (const page of pages) {
+    const localePath = page.id.split('/')[0];
+    const language = localeByPath.get(localePath);
+    if (!language) continue;
+    const path = pagePath(page.id);
+    const translations = translationsByPath.get(path) ?? [];
+    translations.push({
+      locale: language,
+      pathname: pagePathname(page.id.replace(/(^|\/)index$/, ''), astroConfig),
+      noindex: page.data.noindex || hasNoindexMetadata(extractMetadata(parsePage(page.body ?? '')).metadata),
+    });
+    translationsByPath.set(path, translations);
+  }
   return pages.map((entry) => {
     // "<locale>/index" は "<locale>"(= "/ja/"等)としてルーティングする。
     const slug = entry.id.replace(/\/index$/, '');
     return {
       params: { slug: slug || undefined },
-      props: { entry },
+      props: { entry, translations: translationsByPath.get(pagePath(entry.id)) ?? [] },
     };
   });
 }
 
-const { entry } = Astro.props;
+const { entry, translations } = Astro.props;
 const { metadata, tree: treeAfterPageMetadata } = extractMetadata(parsePage(entry.body ?? ''));
 const tree = extractSectionMetadata(treeAfterPageMetadata);
 
@@ -39,6 +58,7 @@ const path = restPath === 'index' ? '' : restPath;
   locale={locale}
   path={path}
   metadata={metadata}
+  translations={translations}
 >
   <BlockRenderer tree={tree} />
 </Base>

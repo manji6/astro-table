@@ -28,7 +28,7 @@ const text =
       };
 ---
 
-<Base title={text.title} pageType="top" locale={locale} path="commerce" breadcrumbs={[{ label: text.title }]}>
+<Base translationLocales={['ja', 'en']} title={text.title} pageType="top" locale={locale} path="commerce" breadcrumbs={[{ label: text.title }]}>
   <h1>{text.title}</h1>
   <ul class="commerce-top__links">
     <li><a href={`/${locale}/commerce/search`}>{text.search}</a></li>
