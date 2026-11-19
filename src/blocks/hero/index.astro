@@ -1,6 +1,6 @@
 ---
 // config系Block(2列key-value)。行の1列目=キー、2列目=値。
-// 対応キー: title(テキスト), image(画像), cta(リンク)
+// 対応キー: title(テキスト), lead(テキスト), image(画像), cta(リンク)
 import type { Cell } from '../../lib/markdown/parse-page';
 
 export interface Props {
@@ -20,6 +20,7 @@ for (const row of rows) {
 }
 
 const title = config.title?.text;
+const lead = config.lead?.text;
 const image = config.image?.images[0];
 const cta = config.cta?.links[0];
 ---
@@ -27,6 +28,7 @@ const cta = config.cta?.links[0];
 <section class="hero" style={image ? `background-image: url(${image.src})` : undefined}>
   <div class="hero__content">
     {title && <h1 class="hero__title">{title}</h1>}
+    {lead && <p class="hero__lead">{lead}</p>}
     {cta && (
       <a class="hero__cta" href={cta.href}>
         {cta.text}
@@ -49,6 +51,10 @@ const cta = config.cta?.links[0];
   }
   .hero__title {
     font-size: 2rem;
+    margin: 0 0 1rem;
+  }
+  .hero__lead {
+    font-size: 1.125rem;
     margin: 0 0 1rem;
   }
   .hero__cta {

@@ -79,3 +79,11 @@ test('the embed preview route picks the example matching its own locale segment'
   await page.goto('/en/block-library/embed/hero');
   await expect(page.locator('.hero__title')).toHaveText('Welcome to AstroTable');
 });
+
+test('the hero Block renders the optional lead below the title, per locale', async ({ page }) => {
+  await page.goto('/ja/block-library/embed/hero');
+  await expect(page.locator('.hero__lead')).toHaveText('Markdownの表を書くだけで、ページ全体を組み立てられます。');
+
+  await page.goto('/en/block-library/embed/hero');
+  await expect(page.locator('.hero__lead')).toHaveText('Build entire pages just by writing Markdown tables.');
+});

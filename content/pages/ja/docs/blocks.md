@@ -14,12 +14,13 @@ AstroTableでは、GFM(GitHub Flavored Markdown)の表をビルド時に対応�
 
 ## hero
 
-大きな見出し・背景画像・CTAボタンを表示するヒーローセクションです。2列のkey-value形式(1列目=キー、2列目=値)で、対応キーは`title`(テキスト)・`image`(画像)・`cta`(リンク)です。
+大きな見出し・背景画像・CTAボタンを表示するヒーローセクションです。2列のkey-value形式(1列目=キー、2列目=値)で、対応キーは`title`(テキスト)・`lead`(テキスト、タイトル下のリード文)・`image`(画像)・`cta`(リンク)です。
 
 ```markdown
 | hero | |
 | --- | --- |
 | title | AstroTableへようこそ |
+| lead | Markdownの表を書くだけで、ページ全体を組み立てられます。 |
 | image | ![街を走るランナー](/images/campaign/running-beginner-hero.png) |
 | cta | [商品を見る](/ja/docs/blocks) |
 ```

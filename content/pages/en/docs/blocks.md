@@ -14,12 +14,13 @@ This page walks through every Block that ships with the core. You can also see t
 
 ## hero
 
-A hero section with a large headline, background image, and CTA button. A 2-column key-value table (column 1 = key, column 2 = value). Supported keys: `title` (text), `image` (image), `cta` (link).
+A hero section with a large headline, background image, and CTA button. A 2-column key-value table (column 1 = key, column 2 = value). Supported keys: `title` (text), `lead` (text, a lead paragraph below the title), `image` (image), `cta` (link).
 
 ```markdown
 | hero | |
 | --- | --- |
 | title | Welcome to AstroTable |
+| lead | Build entire pages just by writing Markdown tables. |
 | image | ![A runner in the city](/images/campaign/running-beginner-hero.png) |
 | cta | [Shop now](/en/docs/blocks) |
 ```
