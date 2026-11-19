@@ -87,3 +87,15 @@ test('the hero Block renders the optional lead below the title, per locale', asy
   await page.goto('/en/block-library/embed/hero');
   await expect(page.locator('.hero__lead')).toHaveText('Build entire pages just by writing Markdown tables.');
 });
+
+test('the cards Block renders the optional description below the title, per locale', async ({ page }) => {
+  await page.goto('/ja/block-library/embed/cards');
+  await expect(page.locator('.cards__description').first()).toHaveText(
+    '通勤ラン需要に応える軽量設計。かかと部にリフレクター素材を使用し夜間の視認性を高めています。',
+  );
+
+  await page.goto('/en/block-library/embed/cards');
+  await expect(page.locator('.cards__description').first()).toHaveText(
+    'Lightweight shoes built for the run-commute. The heel uses a reflective material for better visibility at night.',
+  );
+});

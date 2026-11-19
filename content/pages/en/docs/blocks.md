@@ -33,16 +33,16 @@ The `image` value is applied as a background image. `cta` uses Markdown link syn
 
 ## cards
 
-Displays image/title/link cards in a grid. 3 columns, positional: column 1 = image, column 2 = title, column 3 = link target.
+Displays image/title/link cards in a grid. 3–4 columns, positional: column 1 = image, column 2 = title, column 3 = link target, column 4 = description (optional).
 
 ```markdown
-| cards | | |
-| --- | --- | --- |
-| ![Commute Running Shoes](/images/products/commute-running-shoes.png) | Commute Running Shoes | /en/docs/blocks |
-| ![2-Way Gym Backpack](/images/products/gym-backpack-2way.png) | 2-Way Gym Backpack | /en/docs/blocks |
+| cards | | | |
+| --- | --- | --- | --- |
+| ![Commute Running Shoes](/images/products/commute-running-shoes.png) | Commute Running Shoes | /en/docs/blocks | Lightweight shoes built for the run-commute. |
+| ![2-Way Gym Backpack](/images/products/gym-backpack-2way.png) | 2-Way Gym Backpack | /en/docs/blocks | A backpack made for the commute-to-workout routine. |
 ```
 
-When a link target (column 3) is present, the whole card (image and title included) becomes a link; otherwise the card renders as decorative, non-linked content. The third column works with either Markdown link syntax or a plain path string.
+When a link target (column 3) is present, the whole card (image and title included) becomes a link; otherwise the card renders as decorative, non-linked content. The third column works with either Markdown link syntax or a plain path string. When a description (column 4) is present, it is displayed below the title.
 
 | accordion | |
 | --- | --- |
