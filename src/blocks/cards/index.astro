@@ -1,5 +1,5 @@
 ---
-// 模範Block候補。列の位置ベース解釈: [0]=画像 [1]=タイトル [2]=リンク先。
+// 模範Block候補。列の位置ベース解釈: [0]=画像 [1]=タイトル [2]=リンク先 [3]=説明文。
 import type { Cell } from '../../lib/markdown/parse-page';
 
 export interface Props {
@@ -13,13 +13,15 @@ const { rows, variants } = Astro.props;
 
 <ul class="cards" data-variants={variants.join(' ')}>
   {rows.map((row) => {
-    const [imageCell, titleCell, linkCell] = row;
+    const [imageCell, titleCell, linkCell, descCell] = row;
     const image = imageCell?.images[0];
     const href = linkCell?.links[0]?.href ?? linkCell?.text;
+    const description = descCell?.text;
     const body = (
       <>
         {image && <img class="cards__image" src={image.src} alt={image.alt} />}
         <p class="cards__title">{titleCell?.text}</p>
+        {description && <p class="cards__description">{description}</p>}
         {href && <span class="cards__cta">詳しく見る</span>}
       </>
     );
@@ -66,6 +68,10 @@ const { rows, variants } = Astro.props;
     width: 100%;
     height: auto;
     display: block;
+  }
+  .cards__description {
+    font-size: 0.875rem;
+    margin: 0 0 1rem;
   }
   .cards__cta {
     /* タイトルの行数に関わらず、カードの下端に揃える(margin-top: autoでflexの余白を吸収)。 */
