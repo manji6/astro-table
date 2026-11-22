@@ -66,10 +66,10 @@ AstroTableでは、GFM(GitHub Flavored Markdown)の表をビルド時に対応�
 
 ## table
 
-位置ベースの解釈を**しない**唯一のBlockです。rowsをそのままHTMLの`<table>`として描画します。見た目上ただのデータ表(サイズ表など)を書きたいときに使います。
+位置ベースの解釈を**しない**唯一のBlockです。rowsをそのままHTMLの`<table>`として描画します。見た目上ただのデータ表(サイズ表など)を書きたいときに使います。`header` variantを付ける(`| table (header) | | |`)と、先頭行が見出し行(`<thead>`内の`<th scope="col">`)として描画されます。付けない場合は全行が`<tbody>`の`<td>`になります。
 
 ```markdown
-| table | | |
+| table (header) | | |
 | --- | --- | --- |
 | サイズ | 幅 | 高さ |
 | S | 20cm | 10cm |

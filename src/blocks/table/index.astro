@@ -1,6 +1,11 @@
 ---
 // データ表として、rowsをそのままHTMLの<table>に描画する。
 // 位置ベース解釈をしない唯一のBlock: 「見た目上ただのデータ表」を書きたいときに使う。
+//
+// variant:
+//   header — 先頭行を見出し行として<thead>内に<th scope="col">で描画する(残りは<tbody>の<td>)。
+//            指定しない場合は全行を<tbody>の<td>で描画する(従来どおり)。
+//            例: `| table (header) | | |`
 import type { Cell } from '../../lib/markdown/parse-page';
 
 export interface Props {
@@ -9,13 +14,28 @@ export interface Props {
   rows: Cell[][];
 }
 
-const { rows } = Astro.props;
+const { variants, rows } = Astro.props;
+
+const hasHeader = variants.includes('header') && rows.length > 0;
+const headRow = hasHeader ? rows[0] : undefined;
+const bodyRows = hasHeader ? rows.slice(1) : rows;
 ---
 
 <table class="data-table">
+  {
+    headRow && (
+      <thead>
+        <tr>
+          {headRow.map((cell) => (
+            <th scope="col" set:html={cell.html} />
+          ))}
+        </tr>
+      </thead>
+    )
+  }
   <tbody>
     {
-      rows.map((row) => (
+      bodyRows.map((row) => (
         <tr>
           {row.map((cell) => (
             <td set:html={cell.html} />
@@ -31,8 +51,13 @@ const { rows } = Astro.props;
     border-collapse: collapse;
     width: 100%;
   }
-  .data-table td {
+  .data-table td,
+  .data-table th {
     border: 1px solid #ddd;
     padding: 0.5rem 0.75rem;
+  }
+  .data-table th {
+    font-weight: 600;
+    background: #f5f5f5;
   }
 </style>

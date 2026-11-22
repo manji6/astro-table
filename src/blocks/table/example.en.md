@@ -4,7 +4,7 @@ category: "content"
 searchTags: ["data table", "size chart"]
 ---
 
-| table | | |
+| table (header) | | |
 | --- | --- | --- |
 | Size | Width | Height |
 | S | 20cm | 10cm |

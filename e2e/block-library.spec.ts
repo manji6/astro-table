@@ -99,3 +99,15 @@ test('the cards Block renders the optional description below the title, per loca
     'Lightweight shoes built for the run-commute. The heel uses a reflective material for better visibility at night.',
   );
 });
+
+test('the table Block with the header variant renders the first row as th, per locale', async ({ page }) => {
+  await page.goto('/ja/block-library/embed/table');
+  await expect(page.locator('.data-table thead th')).toHaveCount(3);
+  await expect(page.locator('.data-table thead th').first()).toHaveText('サイズ');
+  await expect(page.locator('.data-table tbody tr').first().locator('td').first()).toHaveText('S');
+
+  await page.goto('/en/block-library/embed/table');
+  await expect(page.locator('.data-table thead th')).toHaveCount(3);
+  await expect(page.locator('.data-table thead th').first()).toHaveText('Size');
+  await expect(page.locator('.data-table tbody tr').first().locator('td').first()).toHaveText('S');
+});

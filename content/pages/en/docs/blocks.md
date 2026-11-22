@@ -66,10 +66,10 @@ Cell contents are rendered as-is (HTML), so inline formatting like bold text, li
 
 ## table
 
-The one Block that does **not** apply positional interpretation. It renders `rows` straight into an HTML `<table>`. Use it when you just want a plain data table (a size chart, for example).
+The one Block that does **not** apply positional interpretation. It renders `rows` straight into an HTML `<table>`. Use it when you just want a plain data table (a size chart, for example). Add the `header` variant (`| table (header) | | |`) to render the first row as a header row (`<th scope="col">` inside `<thead>`). Without it, every row is rendered as `<td>` inside `<tbody>`.
 
 ```markdown
-| table | | |
+| table (header) | | |
 | --- | --- | --- |
 | Size | Width | Height |
 | S | 20cm | 10cm |

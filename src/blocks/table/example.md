@@ -4,7 +4,7 @@ category: "content"
 searchTags: ["データ表", "サイズ表"]
 ---
 
-| table | | |
+| table (header) | | |
 | --- | --- | --- |
 | サイズ | 幅 | 高さ |
 | S | 20cm | 10cm |
