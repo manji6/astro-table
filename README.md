@@ -19,6 +19,12 @@ npm run dev                       # 開発サーバー起動
 
 開発サーバー起動後、`/ja/block-library`(多言語対応時は`/en/block-library`も)にアクセスすると、現在利用可能な全Blockの一覧・実際のレンダリング結果・書き方(Markdownソース)を確認できる。
 
+新規サイトとして使う場合の注意:
+
+- 出荷時の`site.config.ts`は、このrepo自体がマーケティングツールの検証用サイトであるため`member.enabled`が`true`になっている
+- 会員機能(ログイン、マイページ、お気に入り等)が不要なサイトでは、`site.config.ts`の`member.enabled`を`false`にする
+- `false`にすると、ログインやマイページ等のページが生成されなくなり、ログイン状態のオーバーレイも表示されなくなる
+
 ## よくある作業(Skill)
 
 `.claude/skills/`に、Claude Codeへの指示だけで進められる定型作業が用意されている。

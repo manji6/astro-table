@@ -30,6 +30,7 @@ const siteConfig: SiteConfig = {
   member: {
     // astro-tableはマーケティングツール検証用サイトなので、ここでは実際にOnにする。
     // 新規サイトへテンプレートとして展開する際は、必要に応じてfalseに戻す。
+    // 新規サイトとして使う場合は、READMEの「セットアップ」節も参照すること。
     enabled: true,
   },
   storagePrefix: 'astro-table',
