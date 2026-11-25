@@ -47,3 +47,20 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  # 版上げ(package.json)とリリースノート(releases/vX.Y.Z.md)がセットであることを検査する
+  release-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Release gate
+        run: node scripts/check-release-gate.mjs
+        env:
+          BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD^' }}
