@@ -25,6 +25,17 @@ npm run dev                       # 開発サーバー起動
 - 会員機能(ログイン、マイページ、お気に入り等)が不要なサイトでは、`site.config.ts`の`member.enabled`を`false`にする
 - `false`にすると、ログインやマイページ等のページが生成されなくなり、ログイン状態のオーバーレイも表示されなくなる
 
+## ページのスクリーンショット(shot)
+
+```bash
+npm run shot -- /ja/ /ja/block-library   # パスは複数指定可
+```
+
+- ビルド後に`preview`を自動で起動・停止し、PC(1280px)とモバイル(390px)のフルページ画像を`screenshots/`に保存する(`screenshots/`はgit管理外)
+- ファイル名は`<slug>-<pc|mobile>.png`(例: `/ja/`は`ja-pc.png`、`/`は`home-pc.png`)
+- 4321番ポートで既に起動中のサーバーがあれば、それを使い、停止はしない
+- 初回は`npx playwright install chromium`が必要
+
 ## よくある作業(Skill)
 
 `.claude/skills/`に、Claude Codeへの指示だけで進められる定型作業が用意されている。

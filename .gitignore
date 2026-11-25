@@ -32,3 +32,6 @@ playwright-report/
 blob-report/
 playwright/.cache/
 coverage/
+
+# page screenshots (npm run shot)
+screenshots/
