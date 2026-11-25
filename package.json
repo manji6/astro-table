@@ -30,6 +30,7 @@
     "lint": "eslint .",
     "typecheck": "astro check",
     "e2e": "playwright test",
+    "shot": "node scripts/shot.mjs",
     "new:block": "node scripts/new-block.mjs",
     "new:product": "node scripts/new-product.mjs"
   },
